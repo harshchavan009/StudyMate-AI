@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Lightbulb, RefreshCw, RotateCcw, ArrowRight, HelpCircle, FileText } from "lucide-react";
+import { Lightbulb, RefreshCw, RotateCcw, ArrowRight, HelpCircle, FileText, ChevronDown } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -12,6 +12,7 @@ import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
 import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
+import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
 import { NextSteps } from "@/components/tools/NextSteps";
 import { SectionHeader } from "@/components/tools/SectionHeader";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -576,16 +577,21 @@ export function ConceptExplainer() {
                   }}
                   className="relative flex items-start gap-3.5"
                 >
-                  <span className="w-6 h-6 flex items-center justify-center bg-brand text-white text-[11px] font-semibold rounded-full shrink-0 z-10 shadow-sm mt-0.5">
+                  <span className="w-6 h-6 flex items-center justify-center bg-brand text-white text-[11px] font-semibold rounded-full shrink-0 z-10 shadow-sm mt-3.5">
                     {step.step_number}
                   </span>
-                  <div className="flex-1 p-3.5 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-1">
-                    <h3 className="text-xs sm:text-sm font-semibold text-ink">
-                      {step.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
-                      {step.description}
-                    </p>
+                  <div className="flex-1 bg-[#FCFBFA] border border-ink-border rounded-panel overflow-hidden">
+                    <Disclosure defaultOpen={true}>
+                      <DisclosureTrigger className="p-3.5 w-full flex items-center justify-between text-left hover:bg-[#F5F4F0]/60 transition-colors cursor-pointer group">
+                        <h3 className="text-xs sm:text-sm font-semibold text-ink group-hover:text-brand transition-colors">
+                          {step.title}
+                        </h3>
+                        <ChevronDown className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink transition-transform duration-200" strokeWidth={1.75} />
+                      </DisclosureTrigger>
+                      <DisclosureContent className="px-3.5 pb-3.5 pt-0 text-xs sm:text-sm text-ink-secondary leading-relaxed">
+                        <p>{step.description}</p>
+                      </DisclosureContent>
+                    </Disclosure>
                   </div>
                 </motion.div>
               ))}

@@ -227,7 +227,7 @@ export function DiffHighlighter({
           }
 
           const isRejected = rejectedGroupIds.has(group.id);
-          const delay = skipStagger ? 0 : group.id * 0.03;
+          const delay = skipStagger ? 0 : group.id * 0.04;
 
           return (
             <motion.span

@@ -9,6 +9,7 @@ import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
 import { DiffHighlighter } from "@/components/tools/DiffHighlighter";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
+import { TransitionPanel } from "@/components/motion/TransitionPanel";
 import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
@@ -432,12 +433,18 @@ export function AnswerImprover() {
               </span>
             </div>
 
-            <DiffHighlighter
-              original={result.original_answer}
-              improved={result.improved_answer}
-              viewMode={viewMode}
-              onAcceptedTextChange={setLiveAcceptedText}
-            />
+            <TransitionPanel
+              activeIndex={viewMode}
+              transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+            >
+              <DiffHighlighter
+                key={viewMode}
+                original={result.original_answer}
+                improved={result.improved_answer}
+                viewMode={viewMode}
+                onAcceptedTextChange={setLiveAcceptedText}
+              />
+            </TransitionPanel>
           </Card>
 
           {/* 3. Key Improvements Made */}

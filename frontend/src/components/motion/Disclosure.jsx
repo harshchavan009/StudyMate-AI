@@ -7,13 +7,18 @@ const DisclosureContext = createContext(undefined);
 export function DisclosureProvider({
   children,
   open: openProp,
+  defaultOpen = false,
   onOpenChange,
   variants,
 }) {
-  const [internalOpenValue, setInternalOpenValue] = useState(openProp);
+  const [internalOpenValue, setInternalOpenValue] = useState(
+    openProp !== undefined ? openProp : defaultOpen
+  );
 
   useEffect(() => {
-    setInternalOpenValue(openProp);
+    if (openProp !== undefined) {
+      setInternalOpenValue(openProp);
+    }
   }, [openProp]);
 
   const toggle = () => {
@@ -46,18 +51,19 @@ export function useDisclosure() {
 }
 
 export function Disclosure({
-  open: openProp = false,
+  open: openProp,
+  defaultOpen = false,
   onOpenChange,
   children,
-  className,
   transition = { duration: 0.2, ease: "easeOut" },
   variants,
 }) {
   return (
     <MotionConfig transition={transition}>
-      <div className={className}>
+      <div>
         <DisclosureProvider
           open={openProp}
+          defaultOpen={defaultOpen}
           onOpenChange={onOpenChange}
           variants={variants}
         >

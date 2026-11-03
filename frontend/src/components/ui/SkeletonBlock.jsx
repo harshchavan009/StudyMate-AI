@@ -43,8 +43,8 @@ export function SkeletonSummarizer() {
   return (
     <div className="space-y-4" aria-busy="true" aria-live="polite">
       <div className="text-xs text-ink-secondary flex items-center gap-2 mb-2 font-medium">
-        <span className="w-2 h-2 rounded-full bg-brand animate-ping inline-block" />
-        Synthesizing academic text across 6 sections...
+        <span className="w-2 h-2 rounded-full bg-brand inline-block" />
+        Structuring summary across 6 sections...
       </div>
       <SkeletonBlock lines={3} />
       <SkeletonBlock lines={4} />
