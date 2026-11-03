@@ -241,6 +241,15 @@ def test_sanitize_dashes_helper():
     assert "Photosynthesis, the process, converts sunlight" == sanitized
 
 
+def test_no_em_dashes_in_prompts_and_schemas():
+    """Verify prompts.py has zero em dashes anywhere in its templates."""
+    import app.prompts as prompts
+    for attr in dir(prompts):
+        val = getattr(prompts, attr)
+        if isinstance(val, str):
+            assert "—" not in val, f"Em dash found in prompt: {attr}"
+
+
 def test_malformed_json_body_returns_422(client: TestClient):
     """Sending bad request payload must trigger clean 422 error."""
     response = client.post(
