@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { PenLine, RefreshCw, RotateCcw, Columns, FileText, GitCompare, ArrowRight } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { PenLine, RefreshCw, RotateCcw, Columns, FileText, GitCompare, ArrowRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldCounter } from "@/components/ui/FieldCounter";
@@ -9,6 +9,7 @@ import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
 import { DiffHighlighter } from "@/components/tools/DiffHighlighter";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
+import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
@@ -32,6 +33,7 @@ export function AnswerImprover() {
   );
 
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const [answer, setAnswer] = useState("");
   const [subjectOrTopic, setSubjectOrTopic] = useState("");
@@ -45,7 +47,7 @@ export function AnswerImprover() {
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
 
-  // Restore session from navigation or draft
+  // Restore session from navigation, prefill, or draft
   useEffect(() => {
     if (location.state?.session) {
       const { input, result: savedResult } = location.state.session;
@@ -55,6 +57,16 @@ export function AnswerImprover() {
         if (savedResult.subject_or_topic) setSubjectOrTopic(savedResult.subject_or_topic);
         setStatus("success");
       }
+    } else if (location.state?.prefill) {
+      setAnswer(location.state.prefill.slice(0, limits.max || 5000));
+      if (location.state.focus) setSubjectOrTopic(location.state.focus);
+      setStatus("empty");
+      setResult(null);
+      setLiveAcceptedText(null);
+      setTimeout(() => {
+        const el = document.getElementById("improver-answer");
+        if (el) el.focus();
+      }, 50);
     } else {
       const draft = getDraft("improver");
       if (draft && typeof draft === "object") {
@@ -500,6 +512,33 @@ export function AnswerImprover() {
               ))}
             </ul>
           </Card>
+
+          {/* Next Steps Cross-Tool Study (F4) */}
+          <NextSteps
+            steps={[
+              {
+                title: "Quiz me on this",
+                description: "Generate practice multiple choice questions testing concepts from your improved answer.",
+                icon: HelpCircle,
+                onClick: () =>
+                  navigate("/quiz", {
+                    state: {
+                      prefill: activeAnswerText,
+                      focus: subjectOrTopic || null,
+                    },
+                  }),
+              },
+              {
+                title: "Summarize this material",
+                description: "Turn your improved response into key definitions and structured revision notes.",
+                icon: FileText,
+                onClick: () =>
+                  navigate("/summarizer", {
+                    state: { prefill: activeAnswerText },
+                  }),
+              },
+            ]}
+          />
         </AnimatedGroup>
       )}
     </ResultPanel>

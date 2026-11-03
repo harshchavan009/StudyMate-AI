@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { BookOpen, RefreshCw, RotateCcw } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { BookOpen, RefreshCw, RotateCcw, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldCounter } from "@/components/ui/FieldCounter";
@@ -9,6 +9,7 @@ import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
 import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
+import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
@@ -44,6 +45,7 @@ export function Summarizer() {
   );
 
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const [text, setText] = useState("");
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
@@ -54,7 +56,7 @@ export function Summarizer() {
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
 
-  // Restore from navigation state or local draft
+  // Restore from navigation state, prefill, or local draft
   useEffect(() => {
     if (location.state?.session) {
       const { input, result: savedResult } = location.state.session;
@@ -63,6 +65,14 @@ export function Summarizer() {
         setResult(savedResult);
         setStatus("success");
       }
+    } else if (location.state?.prefill) {
+      setText(location.state.prefill);
+      setStatus("empty");
+      setResult(null);
+      setTimeout(() => {
+        const el = document.getElementById("summarizer-input");
+        if (el) el.focus();
+      }, 50);
     } else {
       const draft = getDraft("summarizer");
       if (draft && typeof draft === "string") {
@@ -377,6 +387,34 @@ export function Summarizer() {
               {result.quick_revision_summary}
             </p>
           </Card>
+
+          {/* Next Steps Cross-Tool Study (F4) */}
+          <NextSteps
+            steps={[
+              {
+                title: "Quiz me on this",
+                description: "Generate practice multiple choice questions from your summary material.",
+                icon: HelpCircle,
+                onClick: () => navigate("/quiz", { state: { prefill: text } }),
+              },
+              {
+                title: "Explain a key concept",
+                description: result.key_concepts?.[0]
+                  ? `Explore "${result.key_concepts[0]}" with step-by-step mechanisms.`
+                  : "Explore an underlying concept from this material in depth.",
+                icon: BookOpen,
+                onClick: () =>
+                  navigate("/explainer", {
+                    state: {
+                      prefill:
+                        result.key_concepts?.[0] ||
+                        result.important_definitions?.[0]?.term ||
+                        "",
+                    },
+                  }),
+              },
+            ]}
+          />
         </AnimatedGroup>
       )}
     </ResultPanel>

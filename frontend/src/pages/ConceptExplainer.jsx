@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { Lightbulb, RefreshCw, RotateCcw, ArrowRight } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Lightbulb, RefreshCw, RotateCcw, ArrowRight, HelpCircle, FileText } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -12,6 +12,7 @@ import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
 import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
+import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
@@ -102,6 +103,7 @@ export function ConceptExplainer() {
   );
 
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const shouldReduceMotion = useReducedMotion();
   const [concept, setConcept] = useState("");
@@ -115,7 +117,7 @@ export function ConceptExplainer() {
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
 
-  // Restore session from navigation or draft
+  // Restore session from navigation, prefill, or draft
   useEffect(() => {
     if (location.state?.session) {
       const { input, result } = location.state.session;
@@ -127,6 +129,15 @@ export function ConceptExplainer() {
         setExplainerCache({ [lvl]: result });
         setStatus("success");
       }
+    } else if (location.state?.prefill) {
+      setConcept(location.state.prefill.slice(0, limits.max || 300));
+      if (location.state.subject) setSubject(location.state.subject);
+      setStatus("empty");
+      setExplainerCache({});
+      setTimeout(() => {
+        const el = document.getElementById("explainer-concept");
+        if (el) el.focus();
+      }, 50);
     } else {
       const draft = getDraft("explainer");
       if (draft && typeof draft === "object") {
@@ -587,6 +598,35 @@ export function ConceptExplainer() {
               ))}
             </ul>
           </Card>
+
+          {/* Next Steps Cross-Tool Study (F4) */}
+          <NextSteps
+            steps={[
+              {
+                title: "Quiz me on this",
+                description: `Generate practice multiple choice questions testing your grasp of ${currentResult.concept}.`,
+                icon: HelpCircle,
+                onClick: () => {
+                  const quizSource = `${currentResult.concept}: ${currentResult.introduction}\n\n${currentResult.detailed_explanation}\n\n${currentResult.step_by_step_understanding?.map((s) => s.title + ": " + s.description).join("\n")}`;
+                  navigate("/quiz", {
+                    state: {
+                      prefill: quizSource,
+                      focus: currentResult.concept,
+                    },
+                  });
+                },
+              },
+              {
+                title: "Summarize this topic",
+                description: `Structure the explanation of ${currentResult.concept} into formal definitions and revision notes.`,
+                icon: FileText,
+                onClick: () => {
+                  const sumSource = `${currentResult.concept}\n\n${currentResult.detailed_explanation}\n\n${currentResult.step_by_step_understanding?.map((s) => s.title + ": " + s.description).join("\n")}`;
+                  navigate("/summarizer", { state: { prefill: sumSource } });
+                },
+              },
+            ]}
+          />
         </AnimatedGroup>
       )}
     </ResultPanel>

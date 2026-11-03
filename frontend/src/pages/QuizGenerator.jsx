@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw, Check, Sparkles } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw, Check, Sparkles, FileText, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -11,6 +11,7 @@ import { ResultPanel } from "@/components/ui/ResultPanel";
 import { TransitionPanel } from "@/components/motion/TransitionPanel";
 import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
 import { ScoreCounter } from "@/components/tools/ScoreCounter";
+import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
@@ -67,6 +68,7 @@ export function QuizGenerator() {
   );
 
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const [text, setText] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
@@ -172,6 +174,15 @@ export function QuizGenerator() {
         setCurrentIndex(0);
         setUserAnswers({});
       }
+    } else if (location.state?.prefill) {
+      setText(location.state.prefill);
+      if (location.state.focus) setFocus(location.state.focus);
+      setStatus("empty");
+      setQuizData(null);
+      setTimeout(() => {
+        const el = document.getElementById("quiz-input");
+        if (el) el.focus();
+      }, 50);
     } else {
       try {
         const savedActive = localStorage.getItem(ACTIVE_QUIZ_STORAGE_KEY);
@@ -919,6 +930,26 @@ export function QuizGenerator() {
               );
             })}
           </div>
+
+          {/* Next Steps Cross-Tool Study (F4) */}
+          <NextSteps
+            steps={[
+              {
+                title: "Summarize these notes",
+                description: "Turn your source material into structured exam notes and definitions.",
+                icon: FileText,
+                onClick: () => navigate("/summarizer", { state: { prefill: text } }),
+              },
+              {
+                title: "Explain a key concept",
+                description: focus
+                  ? `Break down "${focus}" with intuitive step-by-step guidance.`
+                  : "Explore an underlying mechanism or theory with step-by-step guidance.",
+                icon: BookOpen,
+                onClick: () => navigate("/explainer", { state: { prefill: focus || "" } }),
+              },
+            ]}
+          />
         </div>
       )}
 
@@ -1080,6 +1111,28 @@ export function QuizGenerator() {
                   <span>Take Quiz Mode</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" strokeWidth={1.75} />
                 </Button>
+              </div>
+
+              {/* Next Steps Cross-Tool Study (F4) */}
+              <div className="pt-4 border-t border-ink-border text-left">
+                <NextSteps
+                  steps={[
+                    {
+                      title: "Summarize these notes",
+                      description: "Turn your source material into structured exam notes and definitions.",
+                      icon: FileText,
+                      onClick: () => navigate("/summarizer", { state: { prefill: text } }),
+                    },
+                    {
+                      title: "Explain a key concept",
+                      description: focus
+                        ? `Break down "${focus}" with intuitive step-by-step guidance.`
+                        : "Explore an underlying mechanism or theory with step-by-step guidance.",
+                      icon: BookOpen,
+                      onClick: () => navigate("/explainer", { state: { prefill: focus || "" } }),
+                    },
+                  ]}
+                />
               </div>
             </Card>
           )}
