@@ -266,7 +266,7 @@ export function AnswerImprover() {
           count={charCount}
           max={limits.max}
           min={limits.min}
-          helperText="10 to 5,000 characters. Factual arguments strictly retained."
+          helperText="10 to 5,000 characters. The tool is told not to add facts. Check the result against your notes."
         />
       </div>
 

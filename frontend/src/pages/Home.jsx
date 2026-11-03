@@ -47,8 +47,8 @@ const FAQS = [
     a: "No. StudyMate AI does not use a cloud database or user accounts. All processing happens in-memory for the duration of the request. Recent session history is saved locally in your own browser using localStorage, and you can clear it anytime.",
   },
   {
-    q: "How are quizzes validated?",
-    a: "Every quiz is checked programmatically against a strict schema requiring four options and a valid answer index. Quizzes check structural integrity, not factual certification against outside reality. Always verify key facts against your course syllabus or textbooks.",
+    q: "How are quizzes checked?",
+    a: "Every quiz is checked programmatically against a schema requiring four options and a valid answer index. Quizzes check structural shape, not factual accuracy against outside reality. Always check answers against your course material.",
   },
   {
     q: "What are the input character limits?",
@@ -332,7 +332,7 @@ export function Home() {
             Frequently Asked Questions
           </h2>
           <p className="text-xs text-ink-secondary">
-            Clear information about data handling, model validation, and usage limits.
+            Clear information about data handling, schema checks, and usage limits.
           </p>
         </div>
 

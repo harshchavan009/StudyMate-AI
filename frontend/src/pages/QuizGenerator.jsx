@@ -36,7 +36,7 @@ const COUNT_OPTIONS = [
 const QUIZ_SECTIONS = [
   { title: "Multiple Choice Questions", description: "Four-option questions targeting core mechanisms from your notes." },
   { title: "Progress tracker", description: "Navigation tracking answered and pending questions." },
-  { title: "Instant Feedback", description: "Immediate validation revealing correct answers and rationales." },
+  { title: "Instant Feedback", description: "Immediate review showing correct answers and rationales." },
   { title: "Answer Explanations", description: "Clear explanations clarifying the underlying concepts." },
   { title: "Your score and a review of every question", description: "Review each question with detailed explanations." },
 ];
@@ -397,7 +397,7 @@ export function QuizGenerator() {
           count={charCount}
           max={limits.max}
           min={limits.min}
-          helperText="20 to 10,000 characters. Input validated live."
+          helperText="20 to 10,000 characters."
         />
       </div>
 
