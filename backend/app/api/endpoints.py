@@ -39,10 +39,10 @@ def health_check():
 def get_tool_configuration():
     """Shared single source of truth for input limits and tool settings."""
     return ConfigResponse(
-        summarizer=ToolLimits(min=20, max=20000),
+        summarizer=ToolLimits(min=20, max=10000),
         quiz={
             "min": 20,
-            "max": 20000,
+            "max": 10000,
             "counts": [5, 10, 15],
             "difficulties": ["easy", "medium", "hard"],
         },

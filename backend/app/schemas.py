@@ -37,12 +37,12 @@ class ConfigResponse(BaseValidatedModel):
 # ---------------------------------------------------------
 
 class SummarizeRequest(BaseValidatedModel):
-    """Request payload for text summarization (20 to 20,000 characters)."""
+    """Request payload for text summarization (20 to 10,000 characters)."""
 
     text: str = Field(
         ...,
         min_length=20,
-        max_length=20000,
+        max_length=10000,
         description="The study text or lecture notes to summarize.",
     )
 
@@ -84,12 +84,12 @@ class SummarizeResponse(BaseValidatedModel):
 # ---------------------------------------------------------
 
 class QuizRequest(BaseValidatedModel):
-    """Request payload for quiz generation."""
+    """Request payload for quiz generation (20 to 10,000 characters)."""
 
     text: str = Field(
         ...,
         min_length=20,
-        max_length=20000,
+        max_length=10000,
         description="The source text or topic to generate quiz questions from.",
     )
     difficulty: Literal["easy", "medium", "hard"] = Field(

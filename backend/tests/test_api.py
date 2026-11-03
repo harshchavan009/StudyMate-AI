@@ -17,15 +17,18 @@ def test_health_check(client: TestClient):
 
 
 def test_config_endpoint(client: TestClient):
-    """Verify shared configuration endpoint returns correct input limits."""
+    """Verify shared configuration endpoint returns exact spec input limits."""
     response = client.get("/api/config")
     assert response.status_code == 200
     data = response.json()
     assert data["summarizer"]["min"] == 20
-    assert data["summarizer"]["max"] == 20000
+    assert data["summarizer"]["max"] == 10000
+    assert data["quiz"]["min"] == 20
+    assert data["quiz"]["max"] == 10000
     assert data["quiz"]["counts"] == [5, 10, 15]
     assert data["answer_improver"]["min"] == 10
     assert data["answer_improver"]["max"] == 5000
+    assert data["answer_improver"]["subject_max"] == 200
     assert data["concept_explainer"]["min"] == 3
     assert data["concept_explainer"]["max"] == 300
     assert "Computer Science" in data["concept_explainer"]["subjects"]
