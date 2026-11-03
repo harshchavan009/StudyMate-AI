@@ -103,6 +103,31 @@ export function clearDraft(toolKey) {
 }
 
 /**
+ * Reviewed sections tracking per session (F5)
+ */
+const REVIEWED_SECTIONS_PREFIX = "studymate_reviewed_v1_";
+
+export function getReviewedSections(sessionId) {
+  try {
+    if (!sessionId) return new Set();
+    const raw = localStorage.getItem(`${REVIEWED_SECTIONS_PREFIX}${sessionId}`);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveReviewedSections(sessionId, reviewedSet) {
+  try {
+    if (!sessionId) return;
+    const array = Array.from(reviewedSet);
+    localStorage.setItem(`${REVIEWED_SECTIONS_PREFIX}${sessionId}`, JSON.stringify(array));
+  } catch {
+    // Ignore
+  }
+}
+
+/**
  * Formats a timestamp into human-readable relative duration.
  */
 export function formatTimeAgo(timestamp) {

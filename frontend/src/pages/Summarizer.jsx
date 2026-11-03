@@ -10,10 +10,11 @@ import { ResultPanel } from "@/components/ui/ResultPanel";
 import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { NextSteps } from "@/components/tools/NextSteps";
+import { SectionHeader } from "@/components/tools/SectionHeader";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
-import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
+import { saveRecentSession, saveDraft, getDraft, clearDraft, getReviewedSections, saveReviewedSections } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_TEXT = `Operating systems manage computer hardware and execution environments through abstraction layers. The kernel is the central core of an operating system, arbitrating memory allocation, CPU scheduling, file storage, and peripheral input and output while enforcing strict process isolation boundaries. 
@@ -51,6 +52,8 @@ export function Summarizer() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 20, max: 10000 });
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -59,8 +62,12 @@ export function Summarizer() {
   // Restore from navigation state, prefill, or local draft
   useEffect(() => {
     if (location.state?.session) {
-      const { input, result: savedResult } = location.state.session;
+      const { id, input, result: savedResult } = location.state.session;
       if (input) setText(input);
+      if (id) {
+        setSessionId(id);
+        setReviewedSections(getReviewedSections(id));
+      }
       if (savedResult) {
         setResult(savedResult);
         setStatus("success");
@@ -69,6 +76,8 @@ export function Summarizer() {
       setText(location.state.prefill);
       setStatus("empty");
       setResult(null);
+      setSessionId(null);
+      setReviewedSections(new Set());
       setTimeout(() => {
         const el = document.getElementById("summarizer-input");
         if (el) el.focus();
@@ -80,6 +89,17 @@ export function Summarizer() {
       }
     }
   }, [location.state]);
+
+  const handleToggleReviewed = (secId) => {
+    setReviewedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      const effectiveId = sessionId || "summarizer_latest";
+      saveReviewedSections(effectiveId, next);
+      return next;
+    });
+  };
 
   // Load limits from backend /api/config
   useEffect(() => {
@@ -137,13 +157,17 @@ export function Summarizer() {
       const data = await api.summarize(text.trim(), { signal: controller.signal });
       setResult(data);
       setStatus("success");
-      saveRecentSession({
+      const saved = saveRecentSession({
         tool: "summarizer",
         toolName: "Summarizer",
         title: text.split("\n")[0].slice(0, 60),
         input: text,
         result: data,
       });
+      if (saved?.id) {
+        setSessionId(saved.id);
+        setReviewedSections(new Set());
+      }
 
       // Move focus to result heading after generation (C11)
       setTimeout(() => {
@@ -187,6 +211,8 @@ export function Summarizer() {
     clearDraft("summarizer");
     setStatus("empty");
     setResult(null);
+    setSessionId(null);
+    setReviewedSections(new Set());
     setError(null);
   };
 
@@ -301,14 +327,15 @@ export function Summarizer() {
       {result && (
         <AnimatedGroup stagger={0.06} className="space-y-6">
           {/* 1. Topic Overview */}
-          <Card id="summary-sec-1" className="p-6 space-y-2">
-            <h2
-              ref={resultHeadingRef}
-              tabIndex={-1}
-              className="font-serif text-lg font-medium text-ink focus:outline-none"
-            >
-              1. Topic Overview
-            </h2>
+          <Card id="summary-sec-1" className="p-6 space-y-3">
+            <SectionHeader
+              title="1. Topic Overview"
+              sectionId="topic_overview"
+              headingRef={resultHeadingRef}
+              isReviewed={reviewedSections.has("topic_overview")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 1. Topic Overview\n\n${result.topic_overview}`}
+            />
             <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
               {result.topic_overview}
             </p>
@@ -316,9 +343,13 @@ export function Summarizer() {
 
           {/* 2. Key Concepts */}
           <Card id="summary-sec-2" className="p-6 space-y-3">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              2. Key Concepts
-            </h2>
+            <SectionHeader
+              title="2. Key Concepts"
+              sectionId="key_concepts"
+              isReviewed={reviewedSections.has("key_concepts")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 2. Key Concepts\n\n${result.key_concepts?.map((c) => `- ${c}`).join("\n")}`}
+            />
             <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
               {result.key_concepts?.map((concept, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
@@ -331,9 +362,13 @@ export function Summarizer() {
 
           {/* 3. Important Definitions */}
           <Card id="summary-sec-3" className="p-6 space-y-3">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              3. Important Definitions
-            </h2>
+            <SectionHeader
+              title="3. Important Definitions"
+              sectionId="important_definitions"
+              isReviewed={reviewedSections.has("important_definitions")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 3. Important Definitions\n\n${result.important_definitions?.map((d) => `### ${d.term}\n${d.definition}`).join("\n\n")}`}
+            />
             <div className="space-y-3">
               {result.important_definitions?.map((item, idx) => (
                 <div key={idx} className="p-3.5 bg-[#FCFBFA] border border-ink-border rounded space-y-1">
@@ -350,9 +385,13 @@ export function Summarizer() {
 
           {/* 4. Important Points */}
           <Card id="summary-sec-4" className="p-6 space-y-3">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              4. Important Points
-            </h2>
+            <SectionHeader
+              title="4. Important Points"
+              sectionId="important_points"
+              isReviewed={reviewedSections.has("important_points")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 4. Important Points\n\n${result.important_points?.map((p) => `- ${p}`).join("\n")}`}
+            />
             <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
               {result.important_points?.map((point, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
@@ -365,9 +404,13 @@ export function Summarizer() {
 
           {/* 5. Exam Preparation Notes */}
           <Card id="summary-sec-5" className="p-6 space-y-3 bg-[#FCFBFA]">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              5. Exam Preparation Notes
-            </h2>
+            <SectionHeader
+              title="5. Exam Preparation Notes"
+              sectionId="exam_notes"
+              isReviewed={reviewedSections.has("exam_notes")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 5. Exam Preparation Notes\n\n${result.exam_preparation_notes?.map((n) => `- ${n}`).join("\n")}`}
+            />
             <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
               {result.exam_preparation_notes?.map((note, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
@@ -379,10 +422,14 @@ export function Summarizer() {
           </Card>
 
           {/* 6. Quick Revision Summary */}
-          <Card id="summary-sec-6" className="p-6 space-y-2">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              6. Quick Revision Summary
-            </h2>
+          <Card id="summary-sec-6" className="p-6 space-y-3">
+            <SectionHeader
+              title="6. Quick Revision Summary"
+              sectionId="revision_summary"
+              isReviewed={reviewedSections.has("revision_summary")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 6. Quick Revision Summary\n\n${result.quick_revision_summary}`}
+            />
             <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
               {result.quick_revision_summary}
             </p>

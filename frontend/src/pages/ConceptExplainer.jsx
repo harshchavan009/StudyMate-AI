@@ -13,10 +13,11 @@ import { ResultPanel } from "@/components/ui/ResultPanel";
 import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { NextSteps } from "@/components/tools/NextSteps";
+import { SectionHeader } from "@/components/tools/SectionHeader";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
-import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
+import { saveRecentSession, saveDraft, getDraft, clearDraft, getReviewedSections, saveReviewedSections } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const SUBJECT_OPTIONS = [
@@ -112,6 +113,8 @@ export function ConceptExplainer() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [explainerCache, setExplainerCache] = useState({}); // { [level]: ExplainConceptResponse } (C8)
+  const [sessionId, setSessionId] = useState(null);
+  const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 3, max: 300 });
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -120,8 +123,12 @@ export function ConceptExplainer() {
   // Restore session from navigation, prefill, or draft
   useEffect(() => {
     if (location.state?.session) {
-      const { input, result } = location.state.session;
+      const { id, input, result } = location.state.session;
       if (input) setConcept(input);
+      if (id) {
+        setSessionId(id);
+        setReviewedSections(getReviewedSections(id));
+      }
       if (result) {
         const lvl = result.level || "intermediate";
         setSelectedLevel(lvl);
@@ -134,6 +141,8 @@ export function ConceptExplainer() {
       if (location.state.subject) setSubject(location.state.subject);
       setStatus("empty");
       setExplainerCache({});
+      setSessionId(null);
+      setReviewedSections(new Set());
       setTimeout(() => {
         const el = document.getElementById("explainer-concept");
         if (el) el.focus();
@@ -147,6 +156,17 @@ export function ConceptExplainer() {
       }
     }
   }, [location.state]);
+
+  const handleToggleReviewed = (secId) => {
+    setReviewedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      const effectiveId = sessionId || "explainer_latest";
+      saveReviewedSections(effectiveId, next);
+      return next;
+    });
+  };
 
   // Load limits from backend /api/config
   useEffect(() => {
@@ -238,13 +258,17 @@ export function ConceptExplainer() {
       }));
       setSelectedLevel(targetLevel);
       setStatus("success");
-      saveRecentSession({
+      const saved = saveRecentSession({
         tool: "explainer",
         toolName: "Concept Explainer",
         title: `${concept.trim()} (${targetLevel})`,
         input: concept,
         result: data,
       });
+      if (saved?.id) {
+        setSessionId(saved.id);
+        setReviewedSections(new Set());
+      }
 
       // Move focus to result heading after generation (C11)
       setTimeout(() => {
@@ -307,6 +331,8 @@ export function ConceptExplainer() {
     setSubject("Not specified");
     setExplainerCache({});
     clearDraft("explainer");
+    setSessionId(null);
+    setReviewedSections(new Set());
     setStatus("empty");
     setError(null);
   };
@@ -487,24 +513,29 @@ export function ConceptExplainer() {
       {currentResult && (
         <AnimatedGroup stagger={0.06} className="space-y-6">
           {/* 1. Introduction */}
-          <Card id="explainer-sec-1" className="p-6 space-y-2">
-            <h2
-              ref={resultHeadingRef}
-              tabIndex={-1}
-              className="font-serif text-lg font-medium text-ink focus:outline-none"
-            >
-              1. Introduction
-            </h2>
+          <Card id="explainer-sec-1" className="p-6 space-y-3">
+            <SectionHeader
+              title="1. Introduction"
+              sectionId="introduction"
+              headingRef={resultHeadingRef}
+              isReviewed={reviewedSections.has("introduction")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 1. Introduction\n\n${currentResult.introduction}`}
+            />
             <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
               {currentResult.introduction}
             </p>
           </Card>
 
           {/* 2. Detailed Explanation */}
-          <Card id="explainer-sec-2" className="p-6 space-y-2">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              2. Detailed Explanation
-            </h2>
+          <Card id="explainer-sec-2" className="p-6 space-y-3">
+            <SectionHeader
+              title="2. Detailed Explanation"
+              sectionId="detailed_explanation"
+              isReviewed={reviewedSections.has("detailed_explanation")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 2. Detailed Explanation\n\n${currentResult.detailed_explanation}`}
+            />
             <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
               {currentResult.detailed_explanation}
             </p>
@@ -512,14 +543,16 @@ export function ConceptExplainer() {
 
           {/* 3. Step-by-Step Understanding with Connector Line (M6) */}
           <Card id="explainer-sec-3" className="p-6 space-y-4">
-            <div className="space-y-1">
-              <h2 className="font-serif text-lg font-medium text-ink">
-                3. Step-by-Step Understanding
-              </h2>
-              <p className="text-xs text-ink-secondary">
-                Logical progression through the key phases of this concept.
-              </p>
-            </div>
+            <SectionHeader
+              title="3. Step-by-Step Understanding"
+              sectionId="step_by_step"
+              isReviewed={reviewedSections.has("step_by_step")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 3. Step-by-Step Understanding\n\n${currentResult.step_by_step_understanding?.map((s) => `### Step ${s.step_number}: ${s.title}\n${s.description}`).join("\n\n")}`}
+            />
+            <p className="text-xs text-ink-secondary">
+              Logical progression through the key phases of this concept.
+            </p>
 
             <div className="relative space-y-4 pt-1">
               {/* Vertical connector line drawing down beside steps (M6) */}
@@ -560,10 +593,14 @@ export function ConceptExplainer() {
           </Card>
 
           {/* 4. Practical Example */}
-          <Card id="explainer-sec-4" className="p-6 space-y-2 bg-[#FCFBFA]">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              4. Practical Example
-            </h2>
+          <Card id="explainer-sec-4" className="p-6 space-y-3 bg-[#FCFBFA]">
+            <SectionHeader
+              title="4. Practical Example"
+              sectionId="practical_example"
+              isReviewed={reviewedSections.has("practical_example")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 4. Practical Example\n\n${currentResult.practical_example}`}
+            />
             <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose whitespace-pre-wrap">
               {currentResult.practical_example}
             </p>
@@ -571,9 +608,13 @@ export function ConceptExplainer() {
 
           {/* 5. Real-World Applications */}
           <Card id="explainer-sec-5" className="p-6 space-y-3">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              5. Real-World Applications
-            </h2>
+            <SectionHeader
+              title="5. Real-World Applications"
+              sectionId="real_world"
+              isReviewed={reviewedSections.has("real_world")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 5. Real-World Applications\n\n${currentResult.real_world_applications?.map((a) => `- ${a}`).join("\n")}`}
+            />
             <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
               {currentResult.real_world_applications?.map((app, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
@@ -586,9 +627,13 @@ export function ConceptExplainer() {
 
           {/* 6. Quick Revision Points */}
           <Card id="explainer-sec-6" className="p-6 space-y-3 bg-[#FCFBFA]">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              6. Quick Revision Points
-            </h2>
+            <SectionHeader
+              title="6. Quick Revision Points"
+              sectionId="revision_points"
+              isReviewed={reviewedSections.has("revision_points")}
+              onToggleReviewed={handleToggleReviewed}
+              copyContent={`## 6. Quick Revision Points\n\n${currentResult.quick_revision_points?.map((p) => `- ${p}`).join("\n")}`}
+            />
             <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
               {currentResult.quick_revision_points?.map((pt, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
