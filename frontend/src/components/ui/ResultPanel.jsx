@@ -80,7 +80,7 @@ export function ResultPanel({
 
       {/* Empty State: Document Sheet with Faint Ghost Headings (B5 / A3) */}
       {(status === "empty" || status === "initial") && (
-        <Card className="p-6 sm:p-8 space-y-6 bg-white border border-ink-border rounded-lg shadow-sm">
+        <Card className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel">
           <div className="space-y-1 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
@@ -121,7 +121,7 @@ export function ResultPanel({
       {/* Loading State: The same document sheet with skeletons under ghost headings (B5 / M3) */}
       {status === "loading" && (
         <Card
-          className="p-6 sm:p-8 space-y-6 bg-white border border-ink-border rounded-lg shadow-sm"
+          className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel"
           aria-busy="true"
           aria-live="polite"
         >
@@ -247,3 +247,4 @@ export function ResultPanel({
     </div>
   );
 }
+
