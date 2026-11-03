@@ -55,3 +55,4 @@ export function SkeletonSummarizer() {
     </div>
   );
 }
+

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
 import { Alert } from "@/components/ui/Alert";
 import { TransitionPanel } from "@/components/motion/TransitionPanel";
+import { DiffHighlighter } from "@/components/tools/DiffHighlighter";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -229,14 +230,12 @@ export function AnswerImprover() {
                     Score: {result.estimated_score_after} / 10
                   </span>
                 </div>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed"
-                >
-                  {result.improved_answer}
-                </motion.p>
+                <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
+                  <DiffHighlighter
+                    text={result.improved_answer}
+                    phrases={result.changed_phrases}
+                  />
+                </div>
               </Card>
             </div>
 
@@ -255,9 +254,12 @@ export function AnswerImprover() {
                 <span className="text-xs font-semibold text-brand uppercase tracking-wider">
                   Improved Academic Revision ({result.estimated_score_after}/10)
                 </span>
-                <p className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                  {result.improved_answer}
-                </p>
+                <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
+                  <DiffHighlighter
+                    text={result.improved_answer}
+                    phrases={result.changed_phrases}
+                  />
+                </div>
               </Card>
             </div>
           </TransitionPanel>
@@ -355,3 +357,4 @@ export function AnswerImprover() {
     </div>
   );
 }
+

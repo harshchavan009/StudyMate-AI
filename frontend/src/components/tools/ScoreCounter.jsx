@@ -21,3 +21,4 @@ export function ScoreCounter({ from = 0, to = 0, duration = 0.6 }) {
 
   return <span ref={nodeRef} className="tabular-nums">{from}</span>;
 }
+
