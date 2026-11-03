@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { getRecentSessions, clearRecentSessions, formatTimeAgo } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 
 const TOOLS = [
   {
@@ -82,6 +83,30 @@ const TOOL_PATH_MAP = {
   improver: "/answer-improver",
   explainer: "/concept-explainer",
 };
+
+function FaqItem({ q, a }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Disclosure open={isOpen} onOpenChange={setIsOpen} className="py-4">
+      <DisclosureTrigger className="w-full flex items-center justify-between text-left group gap-4 cursor-pointer">
+        <span className="text-sm font-medium text-ink group-hover:text-brand transition-colors">
+          {q}
+        </span>
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 text-ink-subtle group-hover:text-ink transition-transform duration-200 shrink-0",
+            isOpen && "rotate-180 text-brand"
+          )}
+          strokeWidth={1.75}
+        />
+      </DisclosureTrigger>
+      <DisclosureContent className="pt-2 text-xs text-ink-secondary leading-relaxed">
+        <p>{a}</p>
+      </DisclosureContent>
+    </Disclosure>
+  );
+}
 
 export function Home() {
   usePageMeta(
@@ -234,7 +259,7 @@ export function Home() {
               Recent Sessions
             </h2>
             <p className="text-xs text-ink-secondary">
-              Study sessions generated in your current browser session. Stored locally without cloud tracking.
+              Saved locally in this browser. Stored across sessions without cloud tracking.
             </p>
           </div>
 
@@ -303,17 +328,7 @@ export function Home() {
 
         <div className="divide-y divide-ink-border border-y border-ink-border">
           {FAQS.map((faq, idx) => (
-            <Disclosure key={idx} className="py-4">
-              <DisclosureTrigger className="w-full flex items-center justify-between text-left group">
-                <span className="text-sm font-medium text-ink group-hover:text-brand transition-colors">
-                  {faq.q}
-                </span>
-                <ChevronDown className="w-4 h-4 text-ink-subtle group-hover:text-ink transition-transform duration-200" />
-              </DisclosureTrigger>
-              <DisclosureContent className="pt-2 text-xs text-ink-secondary leading-relaxed">
-                <p>{faq.a}</p>
-              </DisclosureContent>
-            </Disclosure>
+            <FaqItem key={idx} q={faq.q} a={faq.a} />
           ))}
         </div>
       </section>
