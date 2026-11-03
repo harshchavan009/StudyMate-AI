@@ -1,60 +1,39 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, HelpCircle, PenLine, Lightbulb, ArrowRight, Trash2, Clock, Check, ChevronDown } from "lucide-react";
+import { ArrowRight, Trash2, Clock, ChevronDown } from "lucide-react";
 import { motion } from "motion/react";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
+import { AnimatedHeroComposition } from "@/components/home/AnimatedHeroComposition";
+import { NotesToStructureDiagram } from "@/components/home/NotesToStructureDiagram";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { getRecentSessions, clearRecentSessions, formatTimeAgo } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
-const TOOLS = [
+const TOOLS_INDEX = [
   {
+    num: "01",
     path: "/summarizer",
     title: "Summarizer",
-    icon: BookOpen,
-    description:
-      "Paste lecture notes or textbook chapters to generate a six-section summary: overview, concepts, definitions, key points, exam notes, and revision points.",
+    description: "Paste lecture notes or textbook chapters to generate a six-section summary: overview, concepts, definitions, key points, exam notes, and revision points.",
   },
   {
+    num: "02",
     path: "/quiz",
     title: "Quiz Generator",
-    icon: HelpCircle,
-    description:
-      "Convert study notes into four-option multiple choice questions with progress tracking, immediate answers, and detailed explanations.",
+    description: "Convert study notes into four-option multiple choice questions with progress tracking, immediate answers, and detailed explanations.",
   },
   {
+    num: "03",
     path: "/answer-improver",
     title: "Answer Improver",
-    icon: PenLine,
-    description:
-      "Paste your draft exam response to see structural feedback, side-by-side wording refinements, and suggestions without adding outside facts.",
+    description: "Paste your draft response to see structural feedback, side-by-side wording refinements, and suggestions without introducing new facts.",
   },
   {
+    num: "04",
     path: "/concept-explainer",
     title: "Concept Explainer",
-    icon: Lightbulb,
-    description:
-      "Break down difficult theories and mechanisms into step-by-step guides calibrated across beginner, intermediate, and advanced levels.",
-  },
-];
-
-const HOW_IT_WORKS_STEPS = [
-  {
-    step: "1",
-    title: "Paste notes or enter a topic",
-    description: "Provide your lecture text, draft answer, or a concept you want to master. Character limits are validated live.",
-  },
-  {
-    step: "2",
-    title: "Choose a dedicated tool",
-    description: "Select from Summarizer, Quiz Generator, Answer Improver, or Concept Explainer depending on your current study goal.",
-  },
-  {
-    step: "3",
-    title: "Review, practice, and copy",
-    description: "Read clean academic documents, take interactive self-tests, or copy formatted markdown with one click.",
+    description: "Break down difficult theories and mechanisms into step-by-step guides calibrated across beginner, intermediate, and advanced levels.",
   },
 ];
 
@@ -73,7 +52,7 @@ const FAQS = [
   },
   {
     q: "What are the input character limits?",
-    a: "To ensure fast and reliable responses, study notes accept 20 to 20,000 characters, student answers accept 10 to 5,000 characters, and concept queries accept 3 to 300 characters.",
+    a: "To ensure fast and reliable responses, study notes accept 20 to 10,000 characters, student answers accept 10 to 5,000 characters, and concept queries accept 3 to 300 characters.",
   },
 ];
 
@@ -131,6 +110,131 @@ export function Home() {
     navigate(targetPath, { state: { session: item } });
   };
 
+  const hasHistory = recentSessions.length > 0;
+
+  // Recent Sessions Section Component
+  const recentSessionsSection = (
+    <section className="space-y-4 pt-6 border-t border-ink-border">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
+            Continue Where You Left Off
+          </h2>
+          <p className="text-xs text-ink-secondary">
+            Saved locally in this browser. Stored across sessions without cloud tracking.
+          </p>
+        </div>
+
+        {hasHistory && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearHistory}
+            className="text-ink-subtle hover:text-feedback-error"
+          >
+            <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>Clear history</span>
+          </Button>
+        )}
+      </div>
+
+      {hasHistory ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {recentSessions.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleOpenSession(item)}
+              className="p-4 bg-white border border-ink-border rounded-panel text-left hover:border-ink transition-colors flex items-start justify-between gap-3 group"
+            >
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand bg-brand-tint px-1.5 py-0.5 rounded">
+                    {item.toolName || item.tool}
+                  </span>
+                  <span className="text-[11px] text-ink-subtle flex items-center gap-1">
+                    <Clock className="w-3 h-3" strokeWidth={1.75} />
+                    {formatTimeAgo(item.timestamp)}
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-ink truncate group-hover:text-brand transition-colors">
+                  {item.title}
+                </p>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink shrink-0 mt-1 transition-transform group-hover:translate-x-1" strokeWidth={1.75} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="p-6 bg-white border border-dashed border-ink-border rounded-panel text-center space-y-1">
+          <p className="text-xs font-medium text-ink">
+            No recent study sessions yet
+          </p>
+          <p className="text-xs text-ink-secondary max-w-sm mx-auto">
+            Your generated summaries, quizzes, improved answers, and concept explanations will appear here automatically.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+
+  // How It Works Section Component
+  const howItWorksSection = (
+    <section className="space-y-4 pt-6 border-t border-ink-border">
+      <div className="space-y-1">
+        <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
+          How It Works
+        </h2>
+        <p className="text-xs text-ink-secondary">
+          Raw study material is synthesized into verified, structured academic documents.
+        </p>
+      </div>
+
+      {/* Custom 1.5px Stroke SVG Diagram (B7) */}
+      <div className="p-6 bg-white border border-ink-border rounded-panel">
+        <NotesToStructureDiagram className="w-full overflow-hidden" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+            01
+          </div>
+          <h3 className="text-sm font-semibold text-ink">
+            Paste notes or enter a topic
+          </h3>
+          <p className="text-xs text-ink-secondary leading-relaxed">
+            Provide your raw study notes, draft answer, or target concept. Character limits are validated live.
+          </p>
+        </div>
+
+        <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+            02
+          </div>
+          <h3 className="text-sm font-semibold text-ink">
+            Select a dedicated tool
+          </h3>
+          <p className="text-xs text-ink-secondary leading-relaxed">
+            Choose Summarizer, Quiz Generator, Answer Improver, or Concept Explainer depending on your study goal.
+          </p>
+        </div>
+
+        <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+            03
+          </div>
+          <h3 className="text-sm font-semibold text-ink">
+            Review, practice, and copy
+          </h3>
+          <p className="text-xs text-ink-secondary leading-relaxed">
+            Read clean documents, take interactive quizzes, or export formatted markdown with a single click.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -138,185 +242,137 @@ export function Home() {
       transition={{ duration: 0.2, ease: "easeOut" }}
       className="space-y-12 py-2"
     >
-      {/* Hero Section */}
-      <section className="space-y-4 pt-4 sm:pt-6">
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-ink leading-tight max-w-3xl">
-          Paste your notes. Get a summary, a practice quiz, a clearer answer, or a plain explanation.
-        </h1>
-        <p className="text-base sm:text-lg text-ink-secondary max-w-2xl leading-relaxed">
-          StudyMate AI turns your raw study material into structured exam notes, interactive recall quizzes, phrase-level answer improvements, and step-by-step conceptual breakdowns.
-        </p>
-      </section>
+      {/* Two-Column Hero on Wide Screens (B4) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start pt-4 sm:pt-6">
+        {/* Left Column: Headline, subtext, primary CTA & text link */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="space-y-4">
+            <h1 className="home-headline">
+              Paste your notes. Get a summary, a practice quiz, a clearer answer, or a plain explanation.
+            </h1>
+            <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-xl">
+              StudyMate AI turns unorganized notes, lectures, and draft responses into structured summaries, active-recall quizzes, phrase-level answer improvements, and clear concept breakdowns.
+            </p>
+          </div>
 
-      {/* Feature Cards Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          return (
-            <Link
-              key={tool.path}
-              to={tool.path}
-              className="group p-6 bg-white border border-ink-border rounded-lg transition-colors duration-150 hover:border-ink flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="text-brand">
-                  <Icon className="w-5 h-5" strokeWidth={1.75} />
-                </div>
-                <h2 className="font-serif text-lg font-medium text-ink group-hover:text-brand transition-colors">
-                  {tool.title}
-                </h2>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  {tool.description}
-                </p>
-              </div>
-              <div className="mt-5 pt-4 border-t border-ink-border/60 flex items-center gap-1.5 text-xs font-medium text-brand">
-                <span>Open {tool.title}</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </div>
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            <Link to="/summarizer">
+              <Button variant="primary" size="md">
+                <span>Open Summarizer</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" strokeWidth={1.75} />
+              </Button>
             </Link>
-          );
-        })}
-      </section>
 
-      {/* Real UI Preview of Authentic Generated Output */}
-      <section className="space-y-3 pt-4">
-        <div className="space-y-1">
-          <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
-            Clean, Structured Output
-          </h2>
-          <p className="text-xs text-ink-secondary">
-            Results read like prepared academic documents rather than conversational chat bubbles.
-          </p>
-        </div>
-
-        <div className="p-6 bg-white border border-ink-border rounded-lg space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-ink-border text-xs">
-            <span className="font-semibold text-ink">Example Summary: Operating System Kernels</span>
-            <span className="text-[11px] text-ink-subtle">6 output sections</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 bg-[#FCFBFA] border border-ink-border rounded space-y-1.5">
-              <strong className="text-ink block font-serif text-sm">Topic Overview</strong>
-              <p className="text-ink-secondary text-[11px] leading-relaxed">
-                The kernel arbitrates system resources between user applications and bare physical hardware, enforcing fault isolation boundaries.
-              </p>
-            </div>
-
-            <div className="p-4 bg-[#FCFBFA] border border-ink-border rounded space-y-1.5">
-              <strong className="text-ink block font-serif text-sm">Key Concepts</strong>
-              <p className="text-ink-secondary text-[11px] leading-relaxed">
-                Supervisor vs user privilege levels, virtual memory address translation, and process scheduling algorithms.
-              </p>
-            </div>
-
-            <div className="p-4 bg-[#FCFBFA] border border-ink-border rounded space-y-1.5">
-              <strong className="text-ink block font-serif text-sm">Important Definitions</strong>
-              <p className="text-ink-secondary text-[11px] leading-relaxed">
-                <span className="font-medium text-ink">Microkernel:</span> An architecture delegating drivers and file services to isolated user space processes.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works (Three-step guide) */}
-      <section className="space-y-4 pt-4 border-t border-ink-border">
-        <div className="space-y-1">
-          <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
-            How It Works
-          </h2>
-          <p className="text-xs text-ink-secondary">
-            A three-step workflow designed for focused revision.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {HOW_IT_WORKS_STEPS.map((step) => (
-            <div
-              key={step.step}
-              className="p-5 bg-white border border-ink-border rounded-lg space-y-2"
+            <a
+              href="#tools-index"
+              className="text-xs text-ink-secondary hover:text-ink font-medium underline underline-offset-4 transition-colors"
             >
-              <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs">
-                {step.step}
-              </div>
-              <h3 className="text-sm font-semibold text-ink">
-                {step.title}
-              </h3>
-              <p className="text-xs text-ink-secondary leading-relaxed">
-                {step.description}
-              </p>
-            </div>
-          ))}
+              Explore all four study tools
+            </a>
+          </div>
+        </div>
+
+        {/* Right Column: Real Composition of App Output (B6 & M1) */}
+        <div className="lg:col-span-5">
+          <AnimatedHeroComposition />
         </div>
       </section>
 
-      {/* Recent Sessions (Real data from localStorage) */}
-      <section className="space-y-4 pt-4 border-t border-ink-border">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
-              Recent Sessions
-            </h2>
-            <p className="text-xs text-ink-secondary">
-              Saved locally in this browser. Stored across sessions without cloud tracking.
-            </p>
-          </div>
+      {/* Dynamic Section Ordering based on User History (B4) */}
+      {hasHistory ? (
+        <>
+          {recentSessionsSection}
+          {/* Editorial Tool Index (B4) */}
+          <section id="tools-index" className="space-y-4 pt-6 border-t border-ink-border">
+            <div className="space-y-1">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
+                Directory
+              </span>
+              <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
+                Editorial Tool Index
+              </h2>
+            </div>
 
-          {recentSessions.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearHistory}
-              className="text-ink-subtle hover:text-feedback-error"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear history</span>
-            </Button>
-          )}
-        </div>
-
-        {recentSessions.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {recentSessions.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleOpenSession(item)}
-                className="p-4 bg-white border border-ink-border rounded-lg text-left hover:border-ink transition-colors flex items-start justify-between gap-3 group"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-brand bg-brand-tint px-1.5 py-0.5 rounded">
-                      {item.toolName || item.tool}
+            <div className="divide-y divide-ink-border border-y border-ink-border">
+              {TOOLS_INDEX.map((tool) => (
+                <Link
+                  key={tool.path}
+                  to={tool.path}
+                  className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
+                >
+                  <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
+                    <span className="font-mono text-sm text-ink-subtle shrink-0">
+                      {tool.num}
                     </span>
-                    <span className="text-[11px] text-ink-subtle flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatTimeAgo(item.timestamp)}
-                    </span>
+                    <div className="space-y-1">
+                      <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
+                        {tool.title}
+                      </h3>
+                      <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
+                        {tool.description}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs font-medium text-ink truncate group-hover:text-brand transition-colors">
-                    {item.title}
-                  </p>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="p-6 bg-white border border-dashed border-ink-border rounded-lg text-center space-y-1">
-            <p className="text-xs font-medium text-ink">
-              No recent study sessions yet
-            </p>
-            <p className="text-xs text-ink-secondary max-w-sm mx-auto">
-              Your generated summaries, quizzes, improved answers, and concept explanations will appear here automatically.
-            </p>
-          </div>
-        )}
-      </section>
+
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
+                    <span>Open</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+          {howItWorksSection}
+        </>
+      ) : (
+        <>
+          {howItWorksSection}
+          {/* Editorial Tool Index (B4) */}
+          <section id="tools-index" className="space-y-4 pt-6 border-t border-ink-border">
+            <div className="space-y-1">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
+                Directory
+              </span>
+              <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
+                Editorial Tool Index
+              </h2>
+            </div>
+
+            <div className="divide-y divide-ink-border border-y border-ink-border">
+              {TOOLS_INDEX.map((tool) => (
+                <Link
+                  key={tool.path}
+                  to={tool.path}
+                  className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
+                >
+                  <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
+                    <span className="font-mono text-sm text-ink-subtle shrink-0">
+                      {tool.num}
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
+                        {tool.title}
+                      </h3>
+                      <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
+                        {tool.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
+                    <span>Open</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+          {recentSessionsSection}
+        </>
+      )}
 
       {/* Frequently Asked Questions */}
-      <section className="space-y-6 pt-4 border-t border-ink-border">
+      <section className="space-y-6 pt-6 border-t border-ink-border">
         <div className="space-y-1">
           <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
             Frequently Asked Questions
