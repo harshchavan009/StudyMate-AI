@@ -84,6 +84,66 @@ export function QuizGenerator() {
   const [explanationOpen, setExplanationOpen] = useState(false);
   const questionHeadingRef = useRef(null);
 
+  // F1: Dual Study Modes ("quiz" vs "flashcards") from same questions
+  const [studyMode, setStudyMode] = useState("quiz");
+  const [flashcardDeck, setFlashcardDeck] = useState([]);
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [reviewAgainQueue, setReviewAgainQueue] = useState([]);
+  const [masteredCards, setMasteredCards] = useState(new Set());
+  const [flashcardRound, setFlashcardRound] = useState(1);
+  const [flashcardsDone, setFlashcardsDone] = useState(false);
+
+  const initFlashcards = (qs) => {
+    setFlashcardDeck(qs || []);
+    setFlashcardIndex(0);
+    setIsFlipped(false);
+    setReviewAgainQueue([]);
+    setMasteredCards(new Set());
+    setFlashcardRound(1);
+    setFlashcardsDone(false);
+  };
+
+  const handleFlipCard = () => {
+    setIsFlipped((f) => !f);
+  };
+
+  const advanceFlashcard = (nextQueue, nextMastered) => {
+    setIsFlipped(false);
+    if (flashcardIndex + 1 < flashcardDeck.length) {
+      setFlashcardIndex((i) => i + 1);
+    } else {
+      if (nextQueue.length > 0) {
+        setFlashcardDeck(nextQueue);
+        setReviewAgainQueue([]);
+        setFlashcardIndex(0);
+        setFlashcardRound((r) => r + 1);
+      } else {
+        setFlashcardsDone(true);
+      }
+    }
+  };
+
+  const handleGotIt = () => {
+    const currentCard = flashcardDeck[flashcardIndex];
+    if (!currentCard) return;
+    const nextMastered = new Set(masteredCards).add(currentCard.question);
+    setMasteredCards(nextMastered);
+    advanceFlashcard(reviewAgainQueue, nextMastered);
+  };
+
+  const handleReviewAgain = () => {
+    const currentCard = flashcardDeck[flashcardIndex];
+    if (!currentCard) return;
+    const nextQueue = [...reviewAgainQueue, currentCard];
+    setReviewAgainQueue(nextQueue);
+    advanceFlashcard(nextQueue, masteredCards);
+  };
+
+  const handleRestartFlashcards = () => {
+    initFlashcards(quizData?.questions || []);
+  };
+
   // Load limits from backend /api/config
   useEffect(() => {
     api.getConfig()
@@ -102,6 +162,7 @@ export function QuizGenerator() {
       if (input) setText(input);
       if (result?.questions) {
         setQuizData(result);
+        initFlashcards(result.questions);
         setStatus("playing");
         setCurrentIndex(0);
         setUserAnswers({});
@@ -113,6 +174,7 @@ export function QuizGenerator() {
           const parsed = JSON.parse(savedActive);
           if (parsed && parsed.quizData && parsed.status === "playing") {
             setQuizData(parsed.quizData);
+            initFlashcards(parsed.quizData.questions);
             setUserAnswers(parsed.userAnswers || {});
             setCurrentIndex(parsed.currentIndex || 0);
             setStatus("playing");
@@ -204,6 +266,7 @@ export function QuizGenerator() {
       };
 
       setQuizData(preparedData);
+      initFlashcards(preparedData.questions);
       setStatus("playing");
       saveRecentSession({
         tool: "quiz",
@@ -285,6 +348,31 @@ export function QuizGenerator() {
     window.addEventListener("keydown", handleQuizKeyboard);
     return () => window.removeEventListener("keydown", handleQuizKeyboard);
   }, [status, currentIndex, userAnswers, quizData]);
+
+  // Flashcards keyboard accessibility (Space to flip, 1 to review again, 2 to got it)
+  useEffect(() => {
+    if (studyMode !== "flashcards" || flashcardsDone || !flashcardDeck.length) return;
+
+    const handleKey = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        handleFlipCard();
+      } else if (isFlipped) {
+        if (e.key === "1" || e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          handleReviewAgain();
+        } else if (e.key === "2" || e.key.toLowerCase() === "g" || e.key === "Enter") {
+          e.preventDefault();
+          handleGotIt();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [studyMode, flashcardsDone, flashcardDeck, flashcardIndex, isFlipped, reviewAgainQueue, masteredCards]);
 
   const handleSelectAnswer = (optionIdx) => {
     if (userAnswers[currentIndex] !== undefined) return;
@@ -492,8 +580,31 @@ export function QuizGenerator() {
       rawMarkdown={rawMarkdown}
       filename="studymate-quiz.md"
     >
+      {/* Dual Study Mode Switcher (F1) */}
+      {(status === "playing" || status === "finished") && questions.length > 0 && (
+        <div className="flex items-center justify-between pb-3 border-b border-ink-border">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-ink">Study Mode:</span>
+            <SegmentedControl
+              options={[
+                { label: "Quiz", value: "quiz" },
+                { label: "Flashcards", value: "flashcards" },
+              ]}
+              value={studyMode}
+              onChange={setStudyMode}
+              ariaLabel="Select study mode"
+            />
+          </div>
+          <span className="text-xs font-sans tabular-nums text-ink-subtle">
+            {studyMode === "quiz"
+              ? `Question ${currentIndex + 1} of ${questions.length}`
+              : `Card ${Math.min(flashcardIndex + 1, flashcardDeck.length)} of ${flashcardDeck.length}`}
+          </span>
+        </div>
+      )}
+
       {/* Active Quiz Taking State (M4) */}
-      {status === "playing" && currentQuestion && (
+      {studyMode === "quiz" && status === "playing" && currentQuestion && (
         <div className="space-y-6">
           {/* Progress Strip of N Segments with Icon and Color (M4) */}
           <div className="space-y-2">
@@ -642,7 +753,7 @@ export function QuizGenerator() {
       )}
 
       {/* Quiz Finished State with Retry Missed Questions & Clickable Strip Review (C7, M4) */}
-      {status === "finished" && (
+      {studyMode === "quiz" && status === "finished" && (
         <div className="space-y-6">
           <Card className="p-6 sm:p-8 text-center space-y-4">
             <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
@@ -771,6 +882,170 @@ export function QuizGenerator() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Flashcards Mode (F1: Dual study mode from same questions) */}
+      {studyMode === "flashcards" && (status === "playing" || status === "finished") && (
+        <div className="space-y-4">
+          {!flashcardsDone && flashcardDeck[flashcardIndex] ? (
+            <div className="space-y-4">
+              {/* Header with round & review count */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-sans tabular-nums text-ink-secondary">
+                  Card {flashcardIndex + 1} of {flashcardDeck.length}
+                  {flashcardRound > 1 && (
+                    <span className="ml-2 text-brand font-medium">
+                      (Review Round {flashcardRound})
+                    </span>
+                  )}
+                </span>
+                <span className="text-ink-subtle">
+                  {masteredCards.size} mastered · {reviewAgainQueue.length} for review
+                </span>
+              </div>
+
+              {/* Flashcard with clean front/back states */}
+              <Card
+                onClick={handleFlipCard}
+                className={cn(
+                  "p-6 sm:p-8 cursor-pointer min-h-[240px] flex flex-col justify-between transition-all duration-120 select-none border border-ink-border rounded-panel hover:border-brand/40 shadow-sm",
+                  isFlipped ? "bg-[#FCFBFA]" : "bg-white"
+                )}
+                role="button"
+                tabIndex={0}
+                aria-label={isFlipped ? "Answer side. Click to flip back." : "Question side. Click or press Space to reveal answer."}
+              >
+                {!isFlipped ? (
+                  // Front / Question Side
+                  <div className="space-y-4 my-auto">
+                    <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle uppercase block">
+                      Question
+                    </span>
+                    <h3 className="font-serif text-lg sm:text-xl font-medium text-ink leading-relaxed">
+                      {flashcardDeck[flashcardIndex].question}
+                    </h3>
+                    <div className="pt-4 text-center">
+                      <span className="text-xs text-brand font-medium">
+                        Click card or press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Space</kbd> to reveal answer
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  // Back / Answer Side
+                  <div className="space-y-4 my-auto">
+                    <div className="space-y-1">
+                      <span className="text-xs font-sans tracking-[0.04em] text-feedback-success font-semibold uppercase block">
+                        Correct Answer
+                      </span>
+                      <p className="font-serif text-lg sm:text-xl font-medium text-ink">
+                        {flashcardDeck[flashcardIndex].options[flashcardDeck[flashcardIndex].correct_index]}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-ink-border/60 space-y-1">
+                      <span className="text-xs font-semibold text-ink-secondary block">
+                        Explanation
+                      </span>
+                      <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+                        {flashcardDeck[flashcardIndex].explanation}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Action Buttons for Flipped State */}
+              {isFlipped ? (
+                <div className="flex items-center justify-between gap-4 pt-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={handleReviewAgain}
+                    className="flex-1"
+                    title="Mark to review again in next round (Shortcut: 1 or R)"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    <span>Review again (1)</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    onClick={handleGotIt}
+                    className="flex-1"
+                    title="Mark as mastered (Shortcut: 2 or G)"
+                  >
+                    <Check className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    <span>Got it (2)</span>
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center pt-1 text-xs text-ink-subtle">
+                  Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Space</kbd> to flip
+                </div>
+              )}
+            </div>
+          ) : (
+            // Flashcards Completion Screen
+            <Card className="p-8 text-center space-y-6">
+              <div className="w-12 h-12 rounded-full bg-feedback-success/10 text-feedback-success flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-6 h-6" strokeWidth={1.75} />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-serif text-2xl font-medium text-ink">
+                  Flashcard Set Cleared!
+                </h3>
+                <p className="text-xs text-ink-secondary max-w-sm mx-auto">
+                  You have reviewed all {questions.length} cards and cleared every card marked for review.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto py-2">
+                <div className="p-4 bg-[#FAF9F6] border border-ink-border rounded-panel text-center">
+                  <span className="text-2xl font-serif font-semibold text-ink block tabular-nums">
+                    {questions.length}
+                  </span>
+                  <span className="text-xs text-ink-subtle">
+                    Cards Mastered
+                  </span>
+                </div>
+                <div className="p-4 bg-[#FAF9F6] border border-ink-border rounded-panel text-center">
+                  <span className="text-2xl font-serif font-semibold text-ink block tabular-nums">
+                    {flashcardRound}
+                  </span>
+                  <span className="text-xs text-ink-subtle">
+                    Rounds Run
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={handleRestartFlashcards}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  <span>Restart Flashcards</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={() => setStudyMode("quiz")}
+                >
+                  <span>Take Quiz Mode</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" strokeWidth={1.75} />
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       )}
     </ResultPanel>
