@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw } from "lucide-react";
+import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -12,6 +12,7 @@ import { TransitionPanel } from "@/components/motion/TransitionPanel";
 import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
 import { ScoreCounter } from "@/components/tools/ScoreCounter";
 import { usePageMeta } from "@/lib/usePageMeta";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -33,12 +34,31 @@ const COUNT_OPTIONS = [
 ];
 
 const QUIZ_SECTIONS = [
-  { title: "Multiple Choice Questions", description: "Calibrated four-option questions targeting core mechanisms." },
+  { title: "Multiple Choice Questions", description: "Four-option questions targeting core mechanisms from your notes." },
   { title: "Progress Rail", description: "Real-time navigation tracking answered and pending questions." },
   { title: "Instant Feedback", description: "Immediate validation revealing correct answers and rationales." },
-  { title: "Pedagogical Explanations", description: "Expandable disclosures clarifying underlying principles." },
-  { title: "Final Score Assessment", description: "Animated score count-up and comprehensive question review." },
+  { title: "Answer Explanations", description: "Clear explanations clarifying the underlying concepts." },
+  { title: "Final Score Assessment", description: "Score count-up and comprehensive question review." },
 ];
+
+const ACTIVE_QUIZ_STORAGE_KEY = "studymate_active_quiz_v1";
+
+/**
+ * Shuffles 4 options per question on the client while tracking the correct answer (C7).
+ */
+function shuffleQuestions(questions) {
+  if (!Array.isArray(questions)) return [];
+  return questions.map((q) => {
+    const originalCorrect = q.options[q.correct_index];
+    const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+    const newCorrectIdx = shuffled.indexOf(originalCorrect);
+    return {
+      ...q,
+      options: shuffled,
+      correct_index: newCorrectIdx,
+    };
+  });
+}
 
 export function QuizGenerator() {
   usePageMeta(
@@ -47,6 +67,7 @@ export function QuizGenerator() {
   );
 
   const location = useLocation();
+  const isOnline = useOnlineStatus();
   const [text, setText] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
   const [count, setCount] = useState(5);
@@ -55,11 +76,13 @@ export function QuizGenerator() {
   const [quizData, setQuizData] = useState(null);
   const [limits, setLimits] = useState({ min: 20, max: 10000 });
   const draftTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Quiz taking state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [explanationOpen, setExplanationOpen] = useState(false);
+  const questionHeadingRef = useRef(null);
 
   // Load limits from backend /api/config
   useEffect(() => {
@@ -72,7 +95,7 @@ export function QuizGenerator() {
       .catch(() => {});
   }, []);
 
-  // Restore session from navigation or draft
+  // Restore session from navigation, active quiz, or draft (C7: progress survives refresh)
   useEffect(() => {
     if (location.state?.session) {
       const { input, result } = location.state.session;
@@ -84,12 +107,43 @@ export function QuizGenerator() {
         setUserAnswers({});
       }
     } else {
+      try {
+        const savedActive = localStorage.getItem(ACTIVE_QUIZ_STORAGE_KEY);
+        if (savedActive) {
+          const parsed = JSON.parse(savedActive);
+          if (parsed && parsed.quizData && parsed.status === "playing") {
+            setQuizData(parsed.quizData);
+            setUserAnswers(parsed.userAnswers || {});
+            setCurrentIndex(parsed.currentIndex || 0);
+            setStatus("playing");
+            if (parsed.text) setText(parsed.text);
+            return;
+          }
+        }
+      } catch {}
+
       const draft = getDraft("quiz");
       if (draft && typeof draft === "string") {
         setText(draft);
       }
     }
   }, [location.state]);
+
+  // Persist active quiz progress across refresh (C7)
+  useEffect(() => {
+    if (status === "playing" && quizData) {
+      try {
+        localStorage.setItem(
+          ACTIVE_QUIZ_STORAGE_KEY,
+          JSON.stringify({ quizData, userAnswers, currentIndex, status, text })
+        );
+      } catch {}
+    } else if (status === "finished" || status === "empty") {
+      try {
+        localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
+      } catch {}
+    }
+  }, [status, quizData, userAnswers, currentIndex, text]);
 
   // Debounced autosave draft (500ms)
   const handleTextChange = (e) => {
@@ -108,11 +162,13 @@ export function QuizGenerator() {
   const charCount = text.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
-  const isValid = charCount >= limits.min && charCount <= limits.max;
+  const isValid = isOnline && charCount >= limits.min && charCount <= limits.max;
 
-  // Disabled reason for submit button (A7)
+  // Disabled reason for submit button (A7 / C6)
   let disabledReason = "";
-  if (status === "loading") {
+  if (!isOnline) {
+    disabledReason = "You are currently offline. Check your network connection.";
+  } else if (status === "loading") {
     disabledReason = "Generating quiz questions, please wait...";
   } else if (charCount === 0) {
     disabledReason = `Enter at least ${limits.min} characters to generate a practice quiz.`;
@@ -126,6 +182,9 @@ export function QuizGenerator() {
     if (e) e.preventDefault();
     if (!isValid || status === "loading") return;
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStatus("loading");
     setError(null);
     setCurrentIndex(0);
@@ -133,19 +192,42 @@ export function QuizGenerator() {
     setExplanationOpen(false);
 
     try {
-      const data = await api.generateQuiz(text.trim(), difficulty, Number(count));
-      setQuizData(data);
+      const data = await api.generateQuiz(text.trim(), difficulty, Number(count), {
+        signal: controller.signal,
+      });
+
+      // C7: Shuffle options per question on the client while preserving correct answer
+      const shuffledQuestions = shuffleQuestions(data.questions);
+      const preparedData = {
+        ...data,
+        questions: shuffledQuestions,
+      };
+
+      setQuizData(preparedData);
       setStatus("playing");
       saveRecentSession({
         tool: "quiz",
         toolName: "Quiz Generator",
-        title: `${difficulty.toUpperCase()} Quiz (${data.questions?.length || count} Qs)`,
+        title: `${difficulty.toUpperCase()} Quiz (${preparedData.questions.length} Qs)`,
         input: text,
-        result: data,
+        result: preparedData,
       });
     } catch (err) {
-      setError(err.message || "Failed to generate quiz. Please try again.");
-      setStatus("error");
+      if (err.name === "AbortError" || err.message === "Request was cancelled.") {
+        setStatus(quizData ? "playing" : "empty");
+      } else {
+        setError(err.message || "Failed to generate quiz. Please try again.");
+        setStatus("error");
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   };
 
@@ -166,6 +248,9 @@ export function QuizGenerator() {
   const handleClear = () => {
     setText("");
     clearDraft("quiz");
+    try {
+      localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
+    } catch {}
     setStatus("empty");
     setQuizData(null);
     setError(null);
@@ -215,16 +300,39 @@ export function QuizGenerator() {
     if (currentIndex < quizData.questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setExplanationOpen(false);
+      // Focus move to next question heading (C11)
+      setTimeout(() => {
+        if (questionHeadingRef.current) {
+          questionHeadingRef.current.focus();
+        }
+      }, 50);
     } else {
       setStatus("finished");
     }
   };
 
-  const handleRestartQuiz = () => {
+  // C7: "Retry missed questions" (reuses the same questions, zero API call)
+  const handleRetryMissedQuestions = () => {
+    if (!quizData?.questions) return;
+    const missedQuestions = quizData.questions.filter((q, idx) => {
+      return userAnswers[idx] !== q.correct_index;
+    });
+
+    if (missedQuestions.length === 0) return;
+
+    setQuizData({
+      ...quizData,
+      questions: missedQuestions,
+    });
     setUserAnswers({});
     setCurrentIndex(0);
     setExplanationOpen(false);
     setStatus("playing");
+  };
+
+  // C7: "New quiz"
+  const handleNewQuiz = () => {
+    handleClear();
   };
 
   const questions = quizData?.questions || [];
@@ -235,6 +343,8 @@ export function QuizGenerator() {
     const q = questions[parseInt(qIdx, 10)];
     return q && q.correct_index === ansIdx ? acc + 1 : acc;
   }, 0);
+
+  const missedCount = questions.length - score;
 
   const rawMarkdown = quizData
     ? `# Practice Quiz: ${difficulty.toUpperCase()} (${questions.length} Questions)\n\n` +
@@ -317,8 +427,8 @@ export function QuizGenerator() {
         />
       </div>
 
-      {/* Action Buttons & Disabled Reason */}
-      <div className="pt-2 border-t border-ink-border space-y-2">
+      {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
+      <div className="pt-2 border-t border-ink-border space-y-2 sticky bottom-16 sm:static bg-white/95 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none -mx-4 px-4 py-2 sm:mx-0 sm:px-0 sm:py-0 z-10">
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
@@ -375,16 +485,17 @@ export function QuizGenerator() {
       status={status}
       error={error}
       onRetry={() => handleGenerate()}
+      onStop={handleStop}
       sections={QUIZ_SECTIONS}
       title="Practice Quiz"
       badge={questions.length > 0 ? `${questions.length} questions` : null}
       rawMarkdown={rawMarkdown}
       filename="studymate-quiz.md"
     >
-      {/* Active Quiz Taking State */}
+      {/* Active Quiz Taking State (M4) */}
       {status === "playing" && currentQuestion && (
         <div className="space-y-6">
-          {/* Progress Strip */}
+          {/* Progress Strip of N Segments with Icon and Color (M4) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-medium">
               <span className="text-ink">
@@ -394,7 +505,8 @@ export function QuizGenerator() {
                 {answeredCount} of {questions.length} answered
               </span>
             </div>
-            <div className="flex gap-1.5 h-1.5 w-full bg-[#EAE8E3] rounded-full overflow-hidden">
+
+            <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-15 gap-1.5 w-full">
               {questions.map((_, idx) => {
                 const ans = userAnswers[idx];
                 const isCorrect = ans !== undefined && ans === questions[idx].correct_index;
@@ -405,30 +517,39 @@ export function QuizGenerator() {
                   <div
                     key={idx}
                     className={cn(
-                      "flex-1 transition-colors duration-200",
-                      isCorrect && "bg-feedback-success",
-                      isWrong && "bg-feedback-error",
-                      isCurrent && ans === undefined && "bg-brand",
-                      idx > currentIndex && ans === undefined && "bg-transparent"
+                      "h-2.5 rounded-sm flex items-center justify-center transition-colors duration-200 border",
+                      isCorrect && "bg-feedback-success border-feedback-success text-white",
+                      isWrong && "bg-feedback-error border-feedback-error text-white",
+                      isCurrent && ans === undefined && "bg-brand border-brand",
+                      idx > currentIndex && ans === undefined && "bg-[#EAE8E3] border-transparent"
                     )}
-                  />
+                    title={`Question ${idx + 1}`}
+                  >
+                    {isCorrect && <Check className="w-2.5 h-2.5" strokeWidth={2.5} />}
+                    {isWrong && <XCircle className="w-2.5 h-2.5" strokeWidth={2.5} />}
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Question Slide via TransitionPanel */}
+          {/* Question Slide via TransitionPanel (M4: 200ms slide with fade) */}
           <TransitionPanel activeIndex={currentIndex}>
             <div className="space-y-5">
               <Card className="p-6 space-y-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
                   Multiple Choice Question
                 </span>
-                <p className="font-serif text-base sm:text-lg text-ink font-medium leading-snug">
-                  {currentQuestion.question}
-                </p>
 
-                {/* Option Buttons */}
+                <h3
+                  ref={questionHeadingRef}
+                  tabIndex={-1}
+                  className="font-serif text-base sm:text-lg text-ink font-medium leading-snug outline-none"
+                >
+                  {currentQuestion.question}
+                </h3>
+
+                {/* Option Buttons (M4: updates in 150ms) */}
                 <div className="space-y-2.5 pt-2">
                   {currentQuestion.options.map((option, optIdx) => {
                     const isSelected = userAnswers[currentIndex] === optIdx;
@@ -453,7 +574,7 @@ export function QuizGenerator() {
                         onClick={() => handleSelectAnswer(optIdx)}
                         disabled={isAnswered}
                         className={cn(
-                          "w-full text-left p-3.5 rounded border text-xs sm:text-sm transition-all duration-150 flex items-center justify-between gap-3",
+                          "w-full text-left p-3.5 rounded border text-xs sm:text-sm transition-all duration-150 flex items-center justify-between gap-3 min-h-[44px]",
                           optionStyle
                         )}
                       >
@@ -465,10 +586,10 @@ export function QuizGenerator() {
                         </div>
 
                         {isAnswered && isCorrectOption && (
-                          <CheckCircle2 className="w-4 h-4 text-feedback-success shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-feedback-success shrink-0" strokeWidth={1.75} />
                         )}
                         {isAnswered && isSelected && !isCorrectOption && (
-                          <XCircle className="w-4 h-4 text-feedback-error shrink-0" />
+                          <XCircle className="w-4 h-4 text-feedback-error shrink-0" strokeWidth={1.75} />
                         )}
                       </button>
                     );
@@ -476,9 +597,9 @@ export function QuizGenerator() {
                 </div>
               </Card>
 
-              {/* Expandable Explanation using Disclosure */}
+              {/* Expandable Explanation via Disclosure (M4) */}
               {userAnswers[currentIndex] !== undefined && (
-                <Disclosure open={explanationOpen} className="p-5 bg-[#FCFBFA] border border-ink-border rounded-lg space-y-2">
+                <Disclosure open={explanationOpen} className="p-5 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-ink">
                       Explanation
@@ -520,14 +641,15 @@ export function QuizGenerator() {
         </div>
       )}
 
-      {/* Quiz Finished & Results Breakdown State */}
+      {/* Quiz Finished State with Retry Missed Questions & Clickable Strip Review (C7, M4) */}
       {status === "finished" && (
         <div className="space-y-6">
           <Card className="p-6 sm:p-8 text-center space-y-4">
             <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-              Practice Assessment Complete
+              Assessment Results
             </span>
 
+            {/* Score Count-Up over 700ms (M4) */}
             <div className="flex items-baseline justify-center gap-1">
               <span className="font-serif text-4xl sm:text-5xl font-semibold text-ink">
                 <ScoreCounter value={score} duration={0.7} />
@@ -545,20 +667,59 @@ export function QuizGenerator() {
                 : "Good initial practice. Re-read the source notes and attempt the quiz again."}
             </p>
 
-            <div className="pt-2 flex justify-center gap-3">
+            {/* Clickable Progress Review Strip (M4) */}
+            <div className="pt-2 max-w-md mx-auto">
+              <span className="text-[11px] font-mono text-ink-subtle block mb-1.5">
+                Click a question to view review details
+              </span>
+              <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-15 gap-1.5 w-full">
+                {questions.map((q, idx) => {
+                  const isCorrect = userAnswers[idx] === q.correct_index;
+                  return (
+                    <a
+                      key={idx}
+                      href={`#review-q-${idx + 1}`}
+                      className={cn(
+                        "h-6 rounded flex items-center justify-center text-[10px] font-mono font-medium transition-transform hover:scale-105",
+                        isCorrect
+                          ? "bg-feedback-success text-white"
+                          : "bg-feedback-error text-white"
+                      )}
+                      title={`Jump to Q${idx + 1} (${isCorrect ? "Correct" : "Missed"})`}
+                    >
+                      {idx + 1}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Actions: Retry missed questions (C7) and New quiz (C7) */}
+            <div className="pt-4 flex flex-wrap justify-center gap-3">
+              {missedCount > 0 && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRetryMissedQuestions}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  <span>Retry Missed Questions ({missedCount})</span>
+                </Button>
+              )}
+
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 size="sm"
-                onClick={handleRestartQuiz}
+                onClick={handleNewQuiz}
               >
-                <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>Retake Quiz</span>
+                <span>New Quiz</span>
               </Button>
             </div>
           </Card>
 
-          {/* Per-Question Comprehensive Review List */}
+          {/* Per-Question Detailed Review List */}
           <div className="space-y-3">
             <h3 className="font-serif text-lg font-medium text-ink">
               Detailed Question Review
@@ -569,7 +730,7 @@ export function QuizGenerator() {
               const isCorrect = userAns === q.correct_index;
 
               return (
-                <Card key={idx} className="p-5 space-y-3">
+                <Card id={`review-q-${idx + 1}`} key={idx} className="p-5 space-y-3 scroll-mt-20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5">
                       <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-[11px] font-mono font-medium text-ink shrink-0 mt-0.5">
