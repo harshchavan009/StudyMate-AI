@@ -39,6 +39,7 @@ export function AnswerImprover() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [liveAcceptedText, setLiveAcceptedText] = useState(null);
   const [limits, setLimits] = useState({ min: 10, max: 5000, subject_max: 200 });
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -191,14 +192,17 @@ export function AnswerImprover() {
     clearDraft("improver");
     setStatus("empty");
     setResult(null);
+    setLiveAcceptedText(null);
     setError(null);
   };
+
+  const activeAnswerText = liveAcceptedText || result?.improved_answer || "";
 
   const rawMarkdown = result
     ? `# Answer Improvement Analysis\n\n` +
       (result.subject_or_topic ? `**Topic:** ${result.subject_or_topic}\n\n` : "") +
       `## 1. Original Answer Feedback\n${result.original_answer_feedback}\n\n` +
-      `## 2. Improved Answer\n${result.improved_answer}\n\n` +
+      `## 2. Improved Answer\n${activeAnswerText}\n\n` +
       `## 3. Key Improvements Made\n` +
       result.key_improvements_made.map((item) => `- ${item}`).join("\n") +
       `\n\n## 4. Suggestions for Further Improvement\n` +
@@ -420,6 +424,7 @@ export function AnswerImprover() {
               original={result.original_answer}
               improved={result.improved_answer}
               viewMode={viewMode}
+              onAcceptedTextChange={setLiveAcceptedText}
             />
           </Card>
 
