@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { MotionConfig } from "motion/react";
+import { MotionConfig, motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { Footer } from "./Footer";
+import { ProgressiveBlur } from "@/components/motion/ProgressiveBlur";
 import { Menu, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -20,10 +21,17 @@ const BREADCRUMB_NAMES = {
 
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   // Three states: 'checking' | 'online' | 'unreachable'
   const [healthState, setHealthState] = useState("checking");
   const location = useLocation();
 
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
+  // Wake backend and verify health state once on load (C5)
   useEffect(() => {
     let isMounted = true;
 
@@ -53,32 +61,58 @@ export function AppShell() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen bg-canvas text-ink flex flex-col font-sans antialiased selection:bg-brand-tint selection:text-brand">
-        {/* Desktop Left Sidebar (Fixed 264px, full height with independent scroll) */}
-        <Sidebar collapsed={sidebarCollapsed} />
+      {/* Skip to Main Content Link for Keyboard Accessibility (C11) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand focus:text-white focus:rounded focus:text-xs focus:font-semibold focus:shadow-md"
+      >
+        Skip to main content
+      </a>
 
-        {/* Main Content Column with left offset matching fixed sidebar */}
+      <div className="min-h-screen bg-canvas text-ink flex flex-col font-sans antialiased selection:bg-brand-tint selection:text-brand">
+        {/* Desktop Sidebar (>= 1024px) & Mobile Drawer (< 1024px) (C12) */}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          drawerOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        />
+
+        {/* Main Content Column with left offset matching desktop sidebar */}
         <div
           className={cn(
-            "flex-1 flex flex-col min-w-0 transition-[padding] duration-200 pb-16 md:pb-0",
-            sidebarCollapsed ? "md:pl-16" : "md:pl-[264px]"
+            "flex-1 flex flex-col min-w-0 transition-[padding] duration-200 pb-16 lg:pb-0",
+            sidebarCollapsed ? "lg:pl-16" : "lg:pl-[264px]"
           )}
         >
-          {/* Top Bar: sticky, 56px (h-14) */}
-          <header className="h-14 border-b border-ink-border bg-white/95 backdrop-blur-sm px-4 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-20">
+          {/* Top Bar: sticky, 56px (h-14) with Progressive Blur edge (M7) */}
+          <div className="sticky top-0 z-20">
+            <header className="h-14 border-b border-ink-border bg-white/95 backdrop-blur-sm px-4 sm:px-8 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
+                {/* Mobile hamburger button (< 1024px) opens drawer; desktop button collapses sidebar */}
                 <button
                   type="button"
-                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="hidden md:flex p-1.5 rounded-md hover:bg-black/5 text-ink-secondary hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      setDrawerOpen(!drawerOpen);
+                    } else {
+                      setSidebarCollapsed(!sidebarCollapsed);
+                    }
+                  }}
+                  className="p-1.5 rounded-md hover:bg-black/5 text-ink-secondary hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  aria-label={
+                    drawerOpen
+                      ? "Close navigation drawer"
+                      : sidebarCollapsed
+                      ? "Expand sidebar"
+                      : "Toggle navigation"
+                  }
                 >
                   <Menu className="w-4 h-4" strokeWidth={1.75} />
                 </button>
 
                 {/* Minimal Breadcrumb */}
                 <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-ink-secondary">
-                  <Link to="/" className="hover:text-ink transition-colors">
+                  <Link to="/" className="hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded">
                     Home
                   </Link>
                   {location.pathname !== "/" && (
@@ -97,13 +131,12 @@ export function AppShell() {
                   title={`Backend service: ${healthState}`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      healthState === "online"
-                        ? "bg-feedback-success"
-                        : healthState === "checking"
-                        ? "bg-[#D3D2CA] animate-pulse"
-                        : "bg-feedback-warning"
-                    }`}
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      healthState === "online" && "bg-feedback-success",
+                      healthState === "checking" && "bg-[#D3D2CA] animate-pulse",
+                      healthState === "unreachable" && "bg-feedback-warning"
+                    )}
                   />
                   <span className="text-ink-secondary capitalize">
                     {healthState === "online"
@@ -116,17 +149,34 @@ export function AppShell() {
               </div>
             </header>
 
-            {/* Scrollable Page Content - Consistent Max Width on every page */}
-            <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-7xl w-full mx-auto">
-              <Outlet />
-            </main>
-
-            {/* Footer */}
-            <Footer />
+            {/* Progressive Blur primitive at sticky top bar edge (M7) */}
+            <ProgressiveBlur direction="bottom" />
           </div>
 
-        {/* Mobile Bottom Navigation */}
-        <MobileNav />
+          {/* Route Change Transition: 150ms fade with 4px rise (M2) */}
+          <AnimatePresence mode="wait">
+            <motion.main
+              key={location.pathname}
+              id="main-content"
+              tabIndex={-1}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-7xl w-full mx-auto focus:outline-none"
+            >
+              <Outlet />
+            </motion.main>
+          </AnimatePresence>
+
+          {/* Footer */}
+          <Footer />
+        </div>
+
+        {/* Mobile Bottom Navigation (below 1024px) */}
+        <div className="lg:hidden">
+          <MobileNav />
+        </div>
       </div>
     </MotionConfig>
   );
