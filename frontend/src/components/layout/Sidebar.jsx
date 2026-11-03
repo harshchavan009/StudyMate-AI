@@ -1,6 +1,8 @@
-import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, HelpCircle, PenLine, Lightbulb, Home } from "lucide-react";
+import { useState, useEffect } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { BookOpen, HelpCircle, PenLine, Lightbulb, Home, Clock, ArrowRight } from "lucide-react";
 import { AnimatedBackground } from "@/components/motion/AnimatedBackground";
+import { getRecentSessions } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -11,8 +13,26 @@ const NAV_ITEMS = [
   { path: "/concept-explainer", label: "Concept Explainer", icon: Lightbulb },
 ];
 
+const TOOL_PATH_MAP = {
+  summarizer: "/summarizer",
+  quiz: "/quiz",
+  improver: "/answer-improver",
+  explainer: "/concept-explainer",
+};
+
 export function Sidebar({ collapsed }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [recentSessions, setRecentSessions] = useState([]);
+
+  useEffect(() => {
+    setRecentSessions(getRecentSessions());
+  }, [location.pathname]);
+
+  const handleOpenRecent = (item) => {
+    const targetPath = TOOL_PATH_MAP[item.tool] || "/summarizer";
+    navigate(targetPath, { state: { session: item } });
+  };
 
   return (
     <aside
@@ -22,7 +42,7 @@ export function Sidebar({ collapsed }) {
       )}
     >
       {/* Wordmark Header with Custom SVG Mark */}
-      <div className="h-14 px-4 flex items-center border-b border-ink-border">
+      <div className="h-14 px-4 flex items-center border-b border-ink-border shrink-0">
         <NavLink to="/" className="flex items-center gap-2.5 overflow-hidden group">
           <div className="w-5 h-5 shrink-0 flex items-center justify-center">
             <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -44,7 +64,7 @@ export function Sidebar({ collapsed }) {
         </NavLink>
       </div>
 
-      {/* Navigation Links with AnimatedBackground */}
+      {/* Navigation Links with AnimatedBackground & Active Left Bar */}
       <div className="flex-1 py-4 px-3 space-y-1">
         <div className="px-3 pb-2">
           {!collapsed && (
@@ -69,13 +89,17 @@ export function Sidebar({ collapsed }) {
                 data-id={item.path}
                 to={item.path}
                 className={cn(
-                  "w-full h-10 flex items-center justify-start text-left gap-3 px-4 text-xs font-medium rounded-md transition-colors",
+                  "w-full h-10 relative flex items-center justify-start text-left gap-3 px-4 text-xs font-medium rounded-md transition-colors",
                   isActive
                     ? "text-brand font-semibold"
                     : "text-ink-secondary hover:text-ink"
                 )}
                 title={collapsed ? item.label : undefined}
               >
+                {/* 2px accent bar on the left when active (B3) */}
+                {isActive && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[2px] bg-brand rounded-r" />
+                )}
                 <Icon
                   className={cn("w-4 h-4 shrink-0", isActive ? "text-brand" : "text-ink-subtle")}
                   strokeWidth={1.75}
@@ -86,6 +110,37 @@ export function Sidebar({ collapsed }) {
           })}
         </AnimatedBackground>
       </div>
+
+      {/* Bottom of Sidebar: 3 Most Recent Sessions from Real History (B3) */}
+      {!collapsed && recentSessions.length > 0 && (
+        <div className="p-3 border-t border-ink-border space-y-2 mt-auto shrink-0 bg-white">
+          <div className="px-1 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-ink-subtle">
+            <span>Recent</span>
+            <Clock className="w-3 h-3" strokeWidth={1.75} />
+          </div>
+          <div className="space-y-1">
+            {recentSessions.slice(0, 3).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleOpenRecent(item)}
+                className="w-full text-left px-2.5 py-1.5 rounded hover:bg-[#F3F1EC] transition-colors flex items-center justify-between gap-2 group"
+                title={item.title}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-ink truncate group-hover:text-brand transition-colors">
+                    {item.title}
+                  </p>
+                  <span className="text-[10px] text-ink-subtle block">
+                    {item.toolName || item.tool}
+                  </span>
+                </div>
+                <ArrowRight className="w-3 h-3 text-ink-subtle group-hover:text-ink shrink-0 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
