@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { RefreshCw, Copy, Check, Download, Printer, Square, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -119,53 +120,70 @@ export function ResultPanel({
         </Alert>
       )}
 
-      {/* Empty State: What you will get */}
-      {(status === "empty" || status === "initial") && (
-        <Card className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel">
-          <div className="space-y-1 pb-4 border-b border-ink-border">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
-                What you will get
-              </span>
-              <span className="text-xs text-ink-subtle">
-                {sections.length} sections
-              </span>
-            </div>
-            <h3 className="font-serif text-lg font-medium text-ink">
-              What you will get
-            </h3>
-            <p className="text-xs text-ink-secondary">
-              Your result will appear here across the following structured sections:
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            {sections.map((section, idx) => (
-              <div key={idx} className="space-y-1.5 opacity-60">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-sans tabular-nums text-ink-subtle font-medium">
-                    0{idx + 1}.
+      {/* Animated State Transitions: Empty -> Loading -> Success cross-fades over 200ms (G2) */}
+      <AnimatePresence mode="wait">
+        {/* Empty State: What you will get */}
+        {(status === "empty" || status === "initial") && (
+          <motion.div
+            key="empty-state"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+          >
+            <Card className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel">
+              <div className="space-y-1 pb-4 border-b border-ink-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
+                    What you will get
                   </span>
-                  <h4 className="font-serif text-sm font-medium text-ink">
-                    {section.title}
-                  </h4>
+                  <span className="text-xs text-ink-subtle">
+                    {sections.length} sections
+                  </span>
                 </div>
-                <p className="text-xs text-ink-secondary pl-6 leading-relaxed">
-                  {section.description}
+                <h3 className="font-serif text-lg font-medium text-ink">
+                  What you will get
+                </h3>
+                <p className="text-xs text-ink-secondary">
+                  Your result will appear here across the following structured sections:
                 </p>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
+
+              <div className="space-y-5">
+                {sections.map((section, idx) => (
+                  <div key={idx} className="space-y-1.5 opacity-60">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-sans tabular-nums text-ink-subtle font-medium">
+                        0{idx + 1}.
+                      </span>
+                      <h4 className="font-serif text-sm font-medium text-ink">
+                        {section.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-ink-secondary pl-6 leading-relaxed">
+                      {section.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
       {/* Loading State: Skeletons, Stop button (C4), and Waking Server Notice (C5) */}
       {status === "loading" && (
-        <Card
-          className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel"
-          aria-busy="true"
-          aria-live="polite"
+        <motion.div
+          key="loading-state"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
         >
+          <Card
+            className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel"
+            aria-busy="true"
+            aria-live="polite"
+          >
           <div className="space-y-3 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
               <span className="text-xs font-sans tracking-[0.04em] text-brand font-medium">
@@ -224,11 +242,19 @@ export function ResultPanel({
             ))}
           </div>
         </Card>
-      )}
+      </motion.div>
+    )}
 
       {/* Success / Document Output State */}
       {(status === "success" || status === "playing" || status === "finished") && (
-        <div className="space-y-4">
+        <motion.div
+          key="success-state"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+          className="space-y-4"
+        >
           {/* Top Document Actions Bar with Text Size Control (C1, C10) */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-ink-border print:hidden">
             <div className="flex items-center gap-2">
@@ -331,8 +357,9 @@ export function ResultPanel({
               Generated by AI. Check it against your course material.
             </p>
           </div>
-        </div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* Screen Reader Aria-Live Announcement Region (C1) */}
       <div className="sr-only" aria-live="polite" role="status">
