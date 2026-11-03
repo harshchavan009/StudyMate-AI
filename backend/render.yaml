@@ -15,3 +15,4 @@ services:
         value: 30/minute
       - key: RATE_LIMIT_AI_ENDPOINTS
         value: 15/minute
+

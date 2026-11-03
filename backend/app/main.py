@@ -25,6 +25,11 @@ logger = logging.getLogger("studymate.main")
 async def lifespan(app: FastAPI):
     """Application lifecycle events."""
     logger.info("Starting StudyMate AI backend in %s mode.", settings.ENVIRONMENT)
+    if settings.is_production and not settings.GEMINI_API_KEY:
+        error_msg = "FATAL: GEMINI_API_KEY environment variable is required in production mode."
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
     if not settings.GEMINI_API_KEY:
         logger.warning("Notice: GEMINI_API_KEY is not configured. Backend will operate in fallback mock mode.")
     else:
@@ -96,7 +101,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         msg = error.get("msg", "Invalid value")
         errors.append({"field": field, "message": msg})
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT if hasattr(status, "HTTP_422_UNPROCESSABLE_CONTENT") else 422,
         content={
             "detail": "Input validation failed. Please check the submitted fields.",
             "errors": errors,

@@ -55,3 +55,4 @@ export function DiffHighlighter({ text = "", phrases = [] }) {
     </span>
   );
 }
+
