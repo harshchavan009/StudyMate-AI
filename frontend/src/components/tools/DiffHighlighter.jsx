@@ -32,7 +32,7 @@ export function DiffHighlighter({
 
   if (viewMode === "clean") {
     return (
-      <div className={cn("text-ink leading-relaxed whitespace-pre-wrap", className)}>
+      <div className={cn("text-ink leading-relaxed whitespace-pre-wrap text-xs sm:text-sm", className)}>
         {improved}
       </div>
     );
@@ -76,7 +76,7 @@ export function DiffHighlighter({
   let changeIndex = 0;
 
   return (
-    <div className={cn("leading-relaxed whitespace-pre-wrap text-ink", className)}>
+    <div className={cn("leading-relaxed whitespace-pre-wrap text-ink text-xs sm:text-sm", className)}>
       {diffChunks.map((chunk, idx) => {
         if (chunk.removed) {
           const currentChange = changeIndex++;
@@ -85,10 +85,10 @@ export function DiffHighlighter({
           return (
             <motion.del
               key={`del-${idx}`}
-              initial={skipStagger ? false : { opacity: 0, y: -2 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={skipStagger ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay }}
-              className="line-through text-[#B3261E] bg-[#FDF2F2] px-1 py-0.5 rounded text-xs sm:text-sm decoration-[#B3261E] select-text mx-0.5 inline-block"
+              className="line-through text-[#B3261E] bg-[#FDF2F2] px-0.5 rounded decoration-[#B3261E] select-text inline"
               title="Removed original phrasing"
             >
               {chunk.value}
@@ -103,10 +103,10 @@ export function DiffHighlighter({
           return (
             <motion.ins
               key={`ins-${idx}`}
-              initial={skipStagger ? false : { opacity: 0, y: 2 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={skipStagger ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay }}
-              className="no-underline underline underline-offset-4 decoration-[#1F3FBF] bg-[#EEF1FB] text-[#1F3FBF] font-medium px-1 py-0.5 rounded text-xs sm:text-sm select-text mx-0.5 inline-block"
+              className="no-underline underline underline-offset-4 decoration-[#1F3FBF] bg-[#EEF1FB] text-[#1F3FBF] font-medium px-0.5 rounded select-text inline"
               title="Added improved phrasing"
             >
               {chunk.value}
@@ -115,7 +115,7 @@ export function DiffHighlighter({
         }
 
         return (
-          <span key={`text-${idx}`} className="text-xs sm:text-sm text-ink">
+          <span key={`text-${idx}`} className="text-ink">
             {chunk.value}
           </span>
         );

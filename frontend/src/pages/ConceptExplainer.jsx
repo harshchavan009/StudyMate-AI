@@ -79,15 +79,15 @@ function DepthIndicator({ level = "intermediate" }) {
       {[1, 2, 3].map((bar) => {
         const isActive = bar <= activeCount;
         return (
-          <div
+          <motion.div
             key={bar}
-            className={cn(
-              "w-1 rounded-sm transition-colors duration-200",
-              bar === 1 && "h-2",
-              bar === 2 && "h-3",
-              bar === 3 && "h-4",
-              isActive ? "bg-brand" : "bg-[#D5D8E2]"
-            )}
+            initial={false}
+            animate={{
+              backgroundColor: isActive ? "#1F3FBF" : "#D5D8E2",
+              height: bar === 1 ? 8 : bar === 2 ? 12 : 16,
+            }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-1.5 rounded-sm"
           />
         );
       })}
@@ -520,9 +520,16 @@ export function ConceptExplainer() {
                 aria-hidden="true"
               />
 
-              {currentResult.step_by_step_understanding?.map((step) => (
-                <div
+              {currentResult.step_by_step_understanding?.map((step, sIdx) => (
+                <motion.div
                   key={step.step_number}
+                  initial={shouldReduceMotion ? false : { opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    duration: 0.25,
+                    delay: shouldReduceMotion ? 0 : 0.08 * sIdx,
+                    ease: "easeOut",
+                  }}
                   className="relative flex items-start gap-3.5"
                 >
                   <span className="w-6 h-6 flex items-center justify-center bg-brand text-white text-[11px] font-semibold rounded-full shrink-0 z-10 shadow-sm mt-0.5">
@@ -536,7 +543,7 @@ export function ConceptExplainer() {
                       {step.description}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Card>

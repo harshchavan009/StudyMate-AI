@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { animate } from "motion/react";
 
-export function ScoreCounter({ from = 0, to = 0, duration = 0.6 }) {
+export function ScoreCounter({ from = 0, to = 0, duration = 0.7 }) {
   const nodeRef = useRef();
 
   useEffect(() => {

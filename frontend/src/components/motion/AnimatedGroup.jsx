@@ -1,33 +1,52 @@
 import React, { useMemo } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 
-const defaultContainerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.04,
-    },
-  },
-};
-
-const defaultItemVariants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.2, ease: "easeOut" },
-  },
-};
-
+/**
+ * AnimatedGroup: Staggered entry animation primitive (M3).
+ * Animates child elements with opacity fade and 8px rise with 60ms stagger.
+ */
 export function AnimatedGroup({
   children,
   className,
   variants,
+  stagger = 0.06,
   as = "div",
   asChild = "div",
 }) {
-  const containerVariants = variants?.container || defaultContainerVariants;
-  const itemVariants = variants?.item || defaultItemVariants;
+  const shouldReduceMotion = useReducedMotion();
+
+  const containerVariants = useMemo(() => {
+    if (shouldReduceMotion) {
+      return { hidden: {}, visible: {} };
+    }
+    if (variants?.container) return variants.container;
+    return {
+      hidden: {},
+      visible: {
+        transition: {
+          staggerChildren: stagger,
+        },
+      },
+    };
+  }, [variants, stagger, shouldReduceMotion]);
+
+  const itemVariants = useMemo(() => {
+    if (shouldReduceMotion) {
+      return {
+        hidden: { opacity: 1, y: 0 },
+        visible: { opacity: 1, y: 0 },
+      };
+    }
+    if (variants?.item) return variants.item;
+    return {
+      hidden: { opacity: 0, y: 8 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.25, ease: "easeOut" },
+      },
+    };
+  }, [variants, shouldReduceMotion]);
 
   const MotionComponent = useMemo(
     () => motion.create(as),
@@ -56,4 +75,3 @@ export function AnimatedGroup({
     </MotionComponent>
   );
 }
-

@@ -86,3 +86,4 @@ export function SectionMiniNav({ sections = [], className = "" }) {
     </nav>
   );
 }
+

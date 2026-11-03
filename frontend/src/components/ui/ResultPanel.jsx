@@ -221,10 +221,10 @@ export function ResultPanel({
                   </h4>
                 </div>
                 <div className="pl-6 space-y-2">
-                  <div className="h-3 bg-[#EAE8E3] rounded w-full animate-pulse" />
-                  <div className="h-3 bg-[#F2F0EB] rounded w-5/6 animate-pulse" />
+                  <div className="h-3 bg-[#EAE8E3] rounded w-full animate-pulse-slow" />
+                  <div className="h-3 bg-[#F2F0EB] rounded w-5/6 animate-pulse-slow" />
                   {idx % 2 === 0 && (
-                    <div className="h-3 bg-[#F2F0EB] rounded w-3/4 animate-pulse" />
+                    <div className="h-3 bg-[#F2F0EB] rounded w-3/4 animate-pulse-slow" />
                   )}
                 </div>
               </div>

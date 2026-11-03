@@ -34,6 +34,20 @@
   }
 }
 
+/* 1.5s slow pulse animation for document skeletons (M3) */
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Reduced motion preference fallback */
 @media (prefers-reduced-motion: reduce) {
   *,

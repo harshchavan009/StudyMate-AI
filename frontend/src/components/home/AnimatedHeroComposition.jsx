@@ -1,73 +1,159 @@
 import { useState, useEffect } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { ChevronDown, Check } from "lucide-react";
+import { motion, useReducedMotion, AnimatePresence } from "motion/react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import exampleData from "@/data/exampleSummary.json";
 import { cn } from "@/lib/utils";
 
 /**
+ * 14 raw note bars grouped into the 6 academic summary sections (M1):
+ * - Section 1: 2 bars
+ * - Section 2: 3 bars
+ * - Section 3: 2 bars
+ * - Section 4: 3 bars
+ * - Section 5: 2 bars
+ * - Section 6: 2 bars
+ * Total: 14 bars
+ */
+const SECTIONS_CONFIG = [
+  {
+    num: "01",
+    title: "Topic Overview",
+    bars: ["88%", "68%"],
+    field: "topic_overview",
+    type: "paragraph",
+  },
+  {
+    num: "02",
+    title: "Key Concepts",
+    bars: ["75%", "92%", "60%"],
+    field: "key_concepts",
+    type: "list",
+  },
+  {
+    num: "03",
+    title: "Important Definitions",
+    bars: ["82%", "70%"],
+    field: "important_definitions",
+    type: "definitions",
+  },
+  {
+    num: "04",
+    title: "Important Points",
+    bars: ["90%", "65%", "80%"],
+    field: "important_points",
+    type: "list",
+  },
+  {
+    num: "05",
+    title: "Exam Preparation Notes",
+    bars: ["78%", "85%"],
+    field: "exam_preparation_notes",
+    type: "notes",
+  },
+  {
+    num: "06",
+    title: "Quick Revision Summary",
+    bars: ["95%", "55%"],
+    field: "quick_revision_summary",
+    type: "paragraph",
+  },
+];
+
+/**
  * AnimatedHeroComposition:
  * Implements M1 & B6:
- * - Plays raw notes bars animation once per browser session (sessionStorage flag).
- * - Morph/group into the 6 real summary sections over ~1.2s.
- * - Displays authentic generated response from exampleSummary.json without editing wording.
- * - First two sections expanded, remaining 4 expandable.
+ * - 14 grey bars representing raw notes group into the 6 real summary sections over 1.2s.
+ * - Plays once per browser session (sessionStorage flag), instant for reduced motion / returning visits.
+ * - Includes a replay button for user testing.
+ * - Authentically renders output from exampleSummary.json without text edits.
  */
 export function AnimatedHeroComposition() {
   const shouldReduceMotion = useReducedMotion();
-  const [hasPlayed, setHasPlayed] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationStep, setAnimationStep] = useState("final"); // 'raw' | 'grouping' | 'final'
   const [showAllSections, setShowAllSections] = useState(false);
 
+  const startAnimation = () => {
+    setIsAnimating(true);
+    setAnimationStep("raw");
+
+    // Grouping phase over 1.2s
+    const groupTimer = setTimeout(() => {
+      setAnimationStep("grouping");
+    }, 350);
+
+    const finalTimer = setTimeout(() => {
+      setAnimationStep("final");
+      setIsAnimating(false);
+      try {
+        sessionStorage.setItem("studymate_hero_played", "true");
+      } catch {}
+    }, 1250);
+
+    return () => {
+      clearTimeout(groupTimer);
+      clearTimeout(finalTimer);
+    };
+  };
+
   useEffect(() => {
+    if (shouldReduceMotion) {
+      setAnimationStep("final");
+      return;
+    }
+
     try {
       const alreadyPlayed = sessionStorage.getItem("studymate_hero_played");
-      if (!alreadyPlayed && !shouldReduceMotion) {
-        setHasPlayed(false);
-        const timer = setTimeout(() => {
-          setHasPlayed(true);
-          sessionStorage.setItem("studymate_hero_played", "true");
-        }, 1300);
-        return () => clearTimeout(timer);
+      if (!alreadyPlayed) {
+        startAnimation();
+      } else {
+        setAnimationStep("final");
       }
-    } catch (err) {
-      setHasPlayed(true);
+    } catch {
+      setAnimationStep("final");
     }
   }, [shouldReduceMotion]);
 
   const { source_text, result } = exampleData;
-
-  // 14 raw note bars for M1 initial animation
-  const rawBars = [
-    { width: "75%", delay: 0 },
-    { width: "90%", delay: 0.05 },
-    { width: "60%", delay: 0.1 },
-    { width: "85%", delay: 0.15 },
-    { width: "50%", delay: 0.2 },
-    { width: "95%", delay: 0.25 },
-    { width: "70%", delay: 0.3 },
-    { width: "80%", delay: 0.35 },
-    { width: "65%", delay: 0.4 },
-    { width: "90%", delay: 0.45 },
-    { width: "55%", delay: 0.5 },
-    { width: "85%", delay: 0.55 },
-    { width: "75%", delay: 0.6 },
-    { width: "60%", delay: 0.65 },
-  ];
+  const isRaw = animationStep === "raw";
+  const isGrouping = animationStep === "grouping";
 
   return (
     <div className="relative bg-white border border-ink-border rounded-panel p-5 sm:p-6 shadow-sm space-y-4">
-      {/* Header Label (B6) */}
+      {/* Header Label & Replay Trigger */}
       <div className="space-y-1 pb-3 border-b border-ink-border">
         <div className="flex items-center justify-between text-[11px]">
           <span className="font-mono text-brand font-medium uppercase tracking-wider">
             Verified Output
           </span>
-          <span className="text-ink-subtle">
-            6 structured sections
+          <div className="flex items-center gap-3">
+            <span className="text-ink-subtle">
+              6 structured sections
+            </span>
+            <button
+              type="button"
+              onClick={startAnimation}
+              disabled={isAnimating}
+              className="text-[10px] text-ink-subtle hover:text-brand flex items-center gap-1 font-mono uppercase tracking-wider transition-colors disabled:opacity-40"
+              title="Replay notes-to-structure animation"
+            >
+              <RotateCcw className={cn("w-3 h-3", isAnimating && "animate-spin")} strokeWidth={1.75} />
+              <span>Replay</span>
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-ink">
+            {isRaw
+              ? "14 unorganized raw note bars"
+              : isGrouping
+              ? "Grouping raw notes into 6 academic sections..."
+              : "Example generated by StudyMate AI from this text"}
+          </p>
+          <span className="text-[10px] font-mono text-brand">
+            {isRaw ? "Phase 1: Raw notes" : isGrouping ? "Phase 2: Structuring" : "Final output"}
           </span>
         </div>
-        <p className="text-xs font-semibold text-ink">
-          Example generated by StudyMate AI from this text
-        </p>
       </div>
 
       {/* Source Excerpt (B6) */}
@@ -80,154 +166,125 @@ export function AnimatedHeroComposition() {
         </p>
       </div>
 
-      {/* M1 Animation: Raw Notes Bars morphing into structure on first visit */}
-      {!hasPlayed && (
-        <div className="space-y-2 py-4" aria-hidden="true">
-          <span className="text-[11px] font-mono text-ink-subtle block">
-            Synthesizing raw notes into structure...
-          </span>
-          <div className="space-y-1.5">
-            {rawBars.map((bar, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ width: bar.width, opacity: 0.4, x: -6 }}
-                animate={{ width: "100%", opacity: 1, x: 0 }}
-                transition={{ duration: 1.2, delay: bar.delay, ease: "easeOut" }}
-                className="h-2 bg-[#EAE8E3] rounded"
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Animated Document Sheet (M1) */}
+      <div className="space-y-3.5 text-xs">
+        {/* Render the 6 Structured Section Blocks */}
+        {SECTIONS_CONFIG.map((sec, secIdx) => {
+          // In raw mode, hide blocks 3-6 to focus on first sections or show raw layout
+          if (!showAllSections && secIdx >= 2 && animationStep === "final") {
+            return null;
+          }
 
-      {/* Six Structured Sections from real JSON (first 2 expanded, rest toggleable) */}
-      {hasPlayed && (
-        <div className="space-y-4 text-xs">
-          {/* Section 1: Topic Overview */}
-          <div className="p-3.5 bg-white border border-ink-border rounded space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 flex items-center justify-center bg-brand text-white text-[10px] font-mono font-semibold rounded shrink-0">
-                1
-              </span>
-              <strong className="font-serif text-sm text-ink">
-                Topic Overview
-              </strong>
-            </div>
-            <p className="text-ink-secondary pl-6 leading-relaxed">
-              {result.topic_overview}
-            </p>
-          </div>
-
-          {/* Section 2: Key Concepts */}
-          <div className="p-3.5 bg-white border border-ink-border rounded space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 flex items-center justify-center bg-brand text-white text-[10px] font-mono font-semibold rounded shrink-0">
-                2
-              </span>
-              <strong className="font-serif text-sm text-ink">
-                Key Concepts
-              </strong>
-            </div>
-            <ul className="pl-6 space-y-1 text-ink-secondary">
-              {result.key_concepts.slice(0, 3).map((concept, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-brand font-bold">·</span>
-                  <span>{concept}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Remaining Sections: Sections 3-6 */}
-          {showAllSections && (
+          return (
             <motion.div
-              initial={shouldReduceMotion ? false : { opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              transition={{ duration: 0.2 }}
-              className="space-y-3 pt-1"
+              key={sec.num}
+              layout
+              initial={false}
+              animate={{
+                opacity: 1,
+                y: 0,
+                borderColor: isRaw ? "rgba(22, 24, 29, 0.08)" : "rgba(22, 24, 29, 0.12)",
+                backgroundColor: isRaw ? "#FAF9F6" : "#FFFFFF",
+              }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="p-3.5 border rounded space-y-2 transition-colors"
             >
-              {/* Section 3: Important Definitions */}
-              <div className="p-3.5 bg-white border border-ink-border rounded space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center bg-[#EAE8E3] text-ink text-[10px] font-mono font-semibold rounded shrink-0">
-                    3
-                  </span>
-                  <strong className="font-serif text-sm text-ink">
-                    Important Definitions
-                  </strong>
-                </div>
-                <div className="pl-6 space-y-1 text-ink-secondary">
-                  {result.important_definitions.map((def, idx) => (
-                    <p key={idx}>
-                      <span className="font-medium text-ink">{def.term}:</span> {def.definition}
-                    </p>
-                  ))}
-                </div>
+              {/* Section Header */}
+              <div className="flex items-center gap-2">
+                <motion.span
+                  animate={{
+                    backgroundColor: isRaw ? "#EAE8E3" : "#1F3FBF",
+                    color: isRaw ? "#5B6070" : "#FFFFFF",
+                  }}
+                  transition={{ duration: 0.3 }}
+                  className="w-4 h-4 flex items-center justify-center text-[10px] font-mono font-semibold rounded shrink-0"
+                >
+                  {secIdx + 1}
+                </motion.span>
+                <strong className="font-serif text-sm text-ink">
+                  {sec.title}
+                </strong>
               </div>
 
-              {/* Section 4: Important Points */}
-              <div className="p-3.5 bg-white border border-ink-border rounded space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center bg-[#EAE8E3] text-ink text-[10px] font-mono font-semibold rounded shrink-0">
-                    4
-                  </span>
-                  <strong className="font-serif text-sm text-ink">
-                    Important Points
-                  </strong>
-                </div>
-                <ul className="pl-6 space-y-1 text-ink-secondary">
-                  {result.important_points.map((pt, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-brand font-bold">·</span>
-                      <span>{pt}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* Section Body: In raw/grouping mode show grey bars; in final mode show real text */}
+              <div className="pl-6 space-y-1.5">
+                {animationStep !== "final" ? (
+                  // The 14 raw note bars grouping into structure over 1.2s (M1)
+                  <div className="space-y-1.5 py-1">
+                    {sec.bars.map((barWidth, barIdx) => (
+                      <motion.div
+                        key={barIdx}
+                        initial={{
+                          width: isRaw ? `${parseInt(barWidth, 10) * 0.7}%` : barWidth,
+                          x: isRaw ? (barIdx % 2 === 0 ? -10 : 8) : 0,
+                          opacity: isRaw ? 0.5 : 0.85,
+                        }}
+                        animate={{
+                          width: isGrouping ? barWidth : "100%",
+                          x: 0,
+                          opacity: 1,
+                        }}
+                        transition={{
+                          duration: 0.85,
+                          delay: (secIdx * 2 + barIdx) * 0.05,
+                          ease: "easeOut",
+                        }}
+                        className="h-2 bg-[#EAE8E3] rounded"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  // Final Real Structured Text
+                  <div className="text-ink-secondary leading-relaxed">
+                    {sec.type === "paragraph" && (
+                      <p>{result[sec.field]}</p>
+                    )}
 
-              {/* Section 5: Exam Preparation Notes */}
-              <div className="p-3.5 bg-[#FCFBFA] border border-ink-border rounded space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center bg-[#EAE8E3] text-ink text-[10px] font-mono font-semibold rounded shrink-0">
-                    5
-                  </span>
-                  <strong className="font-serif text-sm text-ink">
-                    Exam Preparation Notes
-                  </strong>
-                </div>
-                <ul className="pl-6 space-y-1 text-ink-secondary">
-                  {result.exam_preparation_notes.map((note, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-brand">→</span>
-                      <span>{note}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    {sec.type === "list" && (
+                      <ul className="space-y-1">
+                        {result[sec.field]?.slice(0, 3).map((item, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-brand font-bold">·</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
-              {/* Section 6: Quick Revision Summary */}
-              <div className="p-3.5 bg-white border border-ink-border rounded space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center bg-[#EAE8E3] text-ink text-[10px] font-mono font-semibold rounded shrink-0">
-                    6
-                  </span>
-                  <strong className="font-serif text-sm text-ink">
-                    Quick Revision Summary
-                  </strong>
-                </div>
-                <p className="text-ink-secondary pl-6 leading-relaxed">
-                  {result.quick_revision_summary}
-                </p>
+                    {sec.type === "definitions" && (
+                      <div className="space-y-1">
+                        {result.important_definitions?.map((def, i) => (
+                          <p key={i}>
+                            <span className="font-medium text-ink">{def.term}:</span> {def.definition}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {sec.type === "notes" && (
+                      <ul className="space-y-1">
+                        {result.exam_preparation_notes?.map((note, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-brand">→</span>
+                            <span>{note}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
-          )}
+          );
+        })}
 
-          {/* Toggle remaining 4 sections */}
+        {/* Toggle remaining sections */}
+        {animationStep === "final" && (
           <div className="pt-2 flex justify-center border-t border-ink-border/50">
             <button
               type="button"
               onClick={() => setShowAllSections(!showAllSections)}
-              className="text-[11px] text-brand hover:underline font-medium inline-flex items-center gap-1.5"
+              className="text-[11px] text-brand hover:underline font-medium inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded"
             >
               <span>{showAllSections ? "Show fewer sections" : "View all 6 generated sections"}</span>
               <ChevronDown
@@ -236,8 +293,8 @@ export function AnimatedHeroComposition() {
               />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
