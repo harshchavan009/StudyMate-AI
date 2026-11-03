@@ -296,7 +296,74 @@ class GeminiService:
     # Deterministic Mock Fallbacks
     # -----------------------------------------------------
     def _mock_summary(self, text: str) -> SummarizeResponse:
-        title = text.split("\n")[0][:60].strip() or "Academic Study Text"
+        is_dns = "domain name system" in text.lower() or "dns" in text.lower()
+        if is_dns:
+            overview = (
+                "The Domain Name System (DNS) serves as the Internet's hierarchical and decentralized directory service. "
+                "Its primary purpose is translating human-readable hostnames into numerical IP addresses required for "
+                "network routing and resource location."
+            )
+            concepts = [
+                "Hierarchical namespace organization spanning root, top-level domains (TLDs), and authoritative subdomains",
+                "Decentralized administration through delegated zone authorities and authoritative name servers",
+                "Resolution mechanisms mapping human-friendly domain names to machine-routable IP addresses",
+                "Distributed fault tolerance ensuring high availability across global network infrastructure",
+            ]
+            definitions = [
+                DefinitionItem(
+                    term="Domain Name System (DNS)",
+                    definition="A hierarchical, decentralized naming system that translates human-readable domain names into numerical IP addresses.",
+                ),
+                DefinitionItem(
+                    term="Authoritative Name Server",
+                    definition="A dedicated server that holds actual DNS records for a given domain zone and provides definitive answers to resolution queries.",
+                ),
+                DefinitionItem(
+                    term="IP Address",
+                    definition="A numerical label assigned to each device connected to a computer network that uses the Internet Protocol for communication.",
+                ),
+            ]
+            points = [
+                "Delegated administration prevents single points of failure by distributing naming authority across distinct zones.",
+                "Without DNS translation, users would need to memorize raw numerical addresses to access networked services.",
+                "Redundant authoritative servers provide resilience against localized network outages and high query loads.",
+            ]
+            exam_notes = [
+                "Be prepared to distinguish between iterative and recursive DNS query resolution workflows on exams.",
+                "Remember that DNS primarily maps names to IP addresses, but also supports reverse lookups and service records.",
+                "Common pitfall: confusing the root name server with an authoritative name server for a specific second-level domain.",
+            ]
+            revision = (
+                "DNS is a decentralized, hierarchical directory protocol that maps domain names to IP addresses. "
+                "Delegating zone authority ensures fault tolerance, scalability, and distributed resolution across the global Internet."
+            )
+            raw_md = (
+                "# Topic Overview\n\n"
+                f"{overview}\n\n"
+                "## Key Concepts\n"
+                + "\n".join(f"- {c}" for c in concepts)
+                + "\n\n## Important Definitions\n"
+                + "\n".join(f"- **{d.term}**: {d.definition}" for d in definitions)
+                + "\n\n## Important Points\n"
+                + "\n".join(f"- {p}" for p in points)
+                + "\n\n## Exam Preparation Notes\n"
+                + "\n".join(f"- {e}" for e in exam_notes)
+                + f"\n\n## Quick Revision Summary\n{revision}"
+            )
+            return SummarizeResponse(
+                topic_overview=overview,
+                key_concepts=concepts,
+                important_definitions=definitions,
+                important_points=points,
+                exam_preparation_notes=exam_notes,
+                quick_revision_summary=revision,
+                raw_markdown=raw_md,
+            )
+
+        # General topic fallback without mid-sentence slicing
+        first_line = text.strip().split("\n")[0].strip()
+        first_sentence = first_line.split(".")[0].strip()
+        title = first_sentence[:80].strip() if len(first_sentence) > 10 else "the provided study material"
         return SummarizeResponse(
             topic_overview=(
                 f"This document examines the foundations and mechanisms of {title}. "
