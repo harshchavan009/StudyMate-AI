@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { PenLine, RefreshCw, RotateCcw, Columns, LayoutGrid, ArrowRight } from "lucide-react";
+import { PenLine, RefreshCw, RotateCcw, Columns, FileText, GitCompare, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldCounter } from "@/components/ui/FieldCounter";
@@ -10,6 +10,7 @@ import { ResultPanel } from "@/components/ui/ResultPanel";
 import { DiffHighlighter } from "@/components/tools/DiffHighlighter";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { usePageMeta } from "@/lib/usePageMeta";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -31,14 +32,17 @@ export function AnswerImprover() {
   );
 
   const location = useLocation();
+  const isOnline = useOnlineStatus();
   const [answer, setAnswer] = useState("");
   const [subjectOrTopic, setSubjectOrTopic] = useState("");
-  const [viewMode, setViewMode] = useState("side-by-side"); // "side-by-side" | "stacked"
+  const [viewMode, setViewMode] = useState("redline"); // "redline" | "clean" | "side-by-side" (M5)
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [limits, setLimits] = useState({ min: 10, max: 5000, subject_max: 200 });
   const draftTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const resultHeadingRef = useRef(null);
 
   // Restore session from navigation or draft
   useEffect(() => {
@@ -74,7 +78,7 @@ export function AnswerImprover() {
       .catch(() => {});
   }, []);
 
-  // Debounced autosave draft (500ms)
+  // Debounced autosave draft (500ms) (C3)
   const saveCurrentDraft = (newAnswer, newTopic) => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
@@ -101,11 +105,13 @@ export function AnswerImprover() {
   const charCount = answer.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
-  const isValid = charCount >= limits.min && charCount <= limits.max;
+  const isValid = isOnline && charCount >= limits.min && charCount <= limits.max;
 
-  // Disabled reason for submit button (A7)
+  // Disabled reason for submit button (A7 / C6)
   let disabledReason = "";
-  if (status === "loading") {
+  if (!isOnline) {
+    disabledReason = "You are currently offline. Check your network connection.";
+  } else if (status === "loading") {
     disabledReason = "Analyzing draft answer, please wait...";
   } else if (charCount === 0) {
     disabledReason = `Paste your draft answer (${limits.min} to ${limits.max.toLocaleString()} characters).`;
@@ -119,13 +125,17 @@ export function AnswerImprover() {
     if (e) e.preventDefault();
     if (!isValid || status === "loading") return;
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStatus("loading");
     setError(null);
 
     try {
       const data = await api.improveAnswer(
         answer.trim(),
-        subjectOrTopic.trim() ? subjectOrTopic.trim() : null
+        subjectOrTopic.trim() ? subjectOrTopic.trim() : null,
+        { signal: controller.signal }
       );
       setResult(data);
       setStatus("success");
@@ -136,9 +146,27 @@ export function AnswerImprover() {
         input: answer,
         result: data,
       });
+
+      // Move focus to result heading after generation (C11)
+      setTimeout(() => {
+        resultHeadingRef.current?.focus();
+      }, 100);
     } catch (err) {
-      setError(err.message || "Failed to analyze and improve answer. Please try again.");
-      setStatus("error");
+      if (err.name === "AbortError" || err.message === "Request was cancelled.") {
+        setStatus(result ? "success" : "empty");
+      } else {
+        setError(err.message || "Failed to analyze and improve answer. Please try again.");
+        setStatus("error");
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   };
 
@@ -242,8 +270,8 @@ export function AnswerImprover() {
         />
       </div>
 
-      {/* Action Buttons & Disabled Reason */}
-      <div className="pt-2 border-t border-ink-border space-y-2">
+      {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
+      <div className="pt-2 border-t border-ink-border space-y-2 sticky bottom-16 sm:static bg-white/95 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none -mx-4 px-4 py-2 sm:mx-0 sm:px-0 sm:py-0 z-10">
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
@@ -295,8 +323,41 @@ export function AnswerImprover() {
     </InputPanel>
   );
 
+  // M5: Three views - Redline, Clean, Side by side
   const customActions = (
-    <div className="inline-flex p-0.5 bg-[#EAE8E3] rounded border border-ink-border">
+    <div className="inline-flex p-0.5 bg-[#EAE8E3] rounded border border-ink-border" role="group" aria-label="Diff view options">
+      <button
+        type="button"
+        onClick={() => setViewMode("redline")}
+        className={cn(
+          "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
+          viewMode === "redline"
+            ? "bg-white text-ink font-medium shadow-sm"
+            : "text-ink-secondary hover:text-ink"
+        )}
+        title="Show inline redline additions and deletions"
+        aria-pressed={viewMode === "redline"}
+      >
+        <GitCompare className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <span className="hidden sm:inline">Redline</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setViewMode("clean")}
+        className={cn(
+          "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
+          viewMode === "clean"
+            ? "bg-white text-ink font-medium shadow-sm"
+            : "text-ink-secondary hover:text-ink"
+        )}
+        title="Show clean improved revision"
+        aria-pressed={viewMode === "clean"}
+      >
+        <FileText className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <span className="hidden sm:inline">Clean</span>
+      </button>
+
       <button
         type="button"
         onClick={() => setViewMode("side-by-side")}
@@ -306,24 +367,11 @@ export function AnswerImprover() {
             ? "bg-white text-ink font-medium shadow-sm"
             : "text-ink-secondary hover:text-ink"
         )}
-        title="Side-by-side comparison"
+        title="Side by side comparison"
+        aria-pressed={viewMode === "side-by-side"}
       >
         <Columns className="w-3.5 h-3.5" strokeWidth={1.75} />
         <span className="hidden sm:inline">Side by Side</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => setViewMode("stacked")}
-        className={cn(
-          "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
-          viewMode === "stacked"
-            ? "bg-white text-ink font-medium shadow-sm"
-            : "text-ink-secondary hover:text-ink"
-        )}
-        title="Stacked comparison"
-      >
-        <LayoutGrid className="w-3.5 h-3.5" strokeWidth={1.75} />
-        <span className="hidden sm:inline">Stacked</span>
       </button>
     </div>
   );
@@ -333,6 +381,7 @@ export function AnswerImprover() {
       status={status}
       error={error}
       onRetry={() => handleGenerate()}
+      onStop={handleStop}
       sections={IMPROVER_SECTIONS}
       title="Answer Improvement"
       badge={result?.subject_or_topic || null}
@@ -344,7 +393,11 @@ export function AnswerImprover() {
         <AnimatedGroup stagger={0.06} className="space-y-6">
           {/* 1. Original Answer Feedback */}
           <Card className="p-6 space-y-2">
-            <h2 className="font-serif text-lg font-medium text-ink">
+            <h2
+              ref={resultHeadingRef}
+              tabIndex={-1}
+              className="font-serif text-lg font-medium text-ink focus:outline-none"
+            >
               1. Original Answer Feedback
             </h2>
             <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
@@ -352,60 +405,23 @@ export function AnswerImprover() {
             </p>
           </Card>
 
-          {/* 2. Improved Answer Comparison */}
-          <div className="space-y-2">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              2. Improved Answer
-            </h2>
+          {/* 2. Improved Answer Comparison with Diff Views (M5) */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-ink-border">
+              <h2 className="font-serif text-lg font-medium text-ink">
+                2. Improved Answer
+              </h2>
+              <span className="text-[11px] font-mono text-ink-subtle uppercase">
+                View: {viewMode}
+              </span>
+            </div>
 
-            {viewMode === "side-by-side" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                <Card className="p-5 space-y-2 bg-[#FCFBFA]">
-                  <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider block border-b border-ink-border pb-1.5">
-                    Original Draft
-                  </span>
-                  <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
-                    {result.original_answer}
-                  </p>
-                </Card>
-
-                <Card className="p-5 space-y-2 bg-white border-brand/40">
-                  <span className="text-[11px] font-semibold text-brand uppercase tracking-wider block border-b border-ink-border pb-1.5">
-                    Improved Revision
-                  </span>
-                  <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                    <DiffHighlighter
-                      text={result.improved_answer}
-                      phrases={result.changed_phrases}
-                    />
-                  </div>
-                </Card>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <Card className="p-5 space-y-2 bg-[#FCFBFA]">
-                  <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider">
-                    Original Draft
-                  </span>
-                  <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
-                    {result.original_answer}
-                  </p>
-                </Card>
-
-                <Card className="p-5 space-y-2 bg-white border-brand/40">
-                  <span className="text-[11px] font-semibold text-brand uppercase tracking-wider">
-                    Improved Revision
-                  </span>
-                  <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                    <DiffHighlighter
-                      text={result.improved_answer}
-                      phrases={result.changed_phrases}
-                    />
-                  </div>
-                </Card>
-              </div>
-            )}
-          </div>
+            <DiffHighlighter
+              original={result.original_answer}
+              improved={result.improved_answer}
+              viewMode={viewMode}
+            />
+          </Card>
 
           {/* 3. Key Improvements Made */}
           <Card className="p-6 space-y-4">
@@ -487,7 +503,7 @@ export function AnswerImprover() {
   return (
     <ToolLayout
       title="Answer Improver"
-      description="Paste your draft response to get structural feedback, side-by-side wording refinements, and suggestions without introducing new facts."
+      description="Paste your draft response to get structural feedback, word-level revisions, and suggestions without introducing new facts."
       inputPanel={inputPanel}
       resultPanel={resultPanel}
     />

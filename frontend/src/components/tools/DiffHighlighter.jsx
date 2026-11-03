@@ -1,58 +1,125 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import { diffWordsWithSpace } from "diff";
+import { cn } from "@/lib/utils";
 
-export function DiffHighlighter({ text = "", phrases = [] }) {
+/**
+ * Word-level diff viewer for Answer Improver (M5).
+ * Views:
+ * - 'redline': Inline word diff with strikethrough deletions, underline + accent tint additions,
+ *              staggered 40ms reveal (skipped if > 60 changes or reduced motion).
+ * - 'clean': Clean improved answer only.
+ * - 'side-by-side': Original answer and clean improved answer side-by-side on wide screens.
+ */
+export function DiffHighlighter({
+  original = "",
+  improved = "",
+  viewMode = "redline", // 'redline' | 'clean' | 'side-by-side'
+  className = "",
+}) {
   const shouldReduceMotion = useReducedMotion();
 
-  const segments = useMemo(() => {
-    if (!text || !phrases || phrases.length === 0) {
-      return [{ text, isHighlight: false }];
-    }
+  const diffChunks = useMemo(() => {
+    if (!original || !improved) return [];
+    return diffWordsWithSpace(original, improved);
+  }, [original, improved]);
 
-    // Extract valid non-empty improved phrases
-    const targets = phrases
-      .map((p) => p.improved_phrase?.trim())
-      .filter((p) => p && p.length > 2);
+  const changeCount = useMemo(() => {
+    return diffChunks.filter((chunk) => chunk.added || chunk.removed).length;
+  }, [diffChunks]);
 
-    if (targets.length === 0) {
-      return [{ text, isHighlight: false }];
-    }
+  const skipStagger = shouldReduceMotion || changeCount > 60;
 
-    // Escape special regex characters in targets
-    const escaped = targets.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+  if (viewMode === "clean") {
+    return (
+      <div className={cn("text-ink leading-relaxed whitespace-pre-wrap", className)}>
+        {improved}
+      </div>
+    );
+  }
 
-    const parts = text.split(regex);
-    return parts.map((part) => {
-      const isMatch = targets.some((t) => t.toLowerCase() === part.toLowerCase());
-      return {
-        text: part,
-        isHighlight: isMatch,
-      };
-    });
-  }, [text, phrases]);
+  if (viewMode === "side-by-side") {
+    return (
+      <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", className)}>
+        <div className="p-4 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-2">
+          <div className="flex items-center justify-between pb-2 border-b border-ink-border">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle font-medium">
+              Original Draft
+            </span>
+            <span className="text-[11px] text-ink-subtle">
+              {original.length} chars
+            </span>
+          </div>
+          <div className="text-xs sm:text-sm text-ink-secondary leading-relaxed whitespace-pre-wrap">
+            {original}
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-brand/20 rounded-panel space-y-2 shadow-sm">
+          <div className="flex items-center justify-between pb-2 border-b border-brand/20">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-brand font-medium">
+              Polished Revision
+            </span>
+            <span className="text-[11px] text-ink-subtle">
+              {improved.length} chars
+            </span>
+          </div>
+          <div className="text-xs sm:text-sm text-ink leading-relaxed whitespace-pre-wrap">
+            {improved}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redline view (M5): Strikethrough for removed, underline + accent tint for added (never color alone)
+  let changeIndex = 0;
 
   return (
-    <span className="leading-relaxed">
-      {segments.map((segment, index) => {
-        if (!segment.isHighlight) {
-          return <span key={index}>{segment.text}</span>;
+    <div className={cn("leading-relaxed whitespace-pre-wrap text-ink", className)}>
+      {diffChunks.map((chunk, idx) => {
+        if (chunk.removed) {
+          const currentChange = changeIndex++;
+          const delay = skipStagger ? 0 : currentChange * 0.04;
+
+          return (
+            <motion.del
+              key={`del-${idx}`}
+              initial={skipStagger ? false : { opacity: 0, y: -2 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, delay }}
+              className="line-through text-[#B3261E] bg-[#FDF2F2] px-1 py-0.5 rounded text-xs sm:text-sm decoration-[#B3261E] select-text mx-0.5 inline-block"
+              title="Removed original phrasing"
+            >
+              {chunk.value}
+            </motion.del>
+          );
+        }
+
+        if (chunk.added) {
+          const currentChange = changeIndex++;
+          const delay = skipStagger ? 0 : currentChange * 0.04;
+
+          return (
+            <motion.ins
+              key={`ins-${idx}`}
+              initial={skipStagger ? false : { opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, delay }}
+              className="no-underline underline underline-offset-4 decoration-[#1F3FBF] bg-[#EEF1FB] text-[#1F3FBF] font-medium px-1 py-0.5 rounded text-xs sm:text-sm select-text mx-0.5 inline-block"
+              title="Added improved phrasing"
+            >
+              {chunk.value}
+            </motion.ins>
+          );
         }
 
         return (
-          <motion.mark
-            key={index}
-            initial={shouldReduceMotion ? false : { opacity: 0.6, backgroundColor: "rgba(254, 243, 199, 0.2)" }}
-            animate={{ opacity: 1, backgroundColor: "#FEF3C7" }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="bg-diff-bg text-ink font-medium px-1 py-0.5 rounded border border-diff-border not-italic inline"
-            title="Improved phrase"
-          >
-            {segment.text}
-          </motion.mark>
+          <span key={`text-${idx}`} className="text-xs sm:text-sm text-ink">
+            {chunk.value}
+          </span>
         );
       })}
-    </span>
+    </div>
   );
 }
-
