@@ -1,18 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw, Copy, Check } from "lucide-react";
-import { motion } from "motion/react";
+import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
+import { Card } from "@/components/ui/Card";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { FieldCounter } from "@/components/ui/FieldCounter";
+import { ToolLayout } from "@/components/layout/ToolLayout";
+import { InputPanel } from "@/components/ui/InputPanel";
+import { ResultPanel } from "@/components/ui/ResultPanel";
 import { TransitionPanel } from "@/components/motion/TransitionPanel";
 import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
-import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { ScoreCounter } from "@/components/tools/ScoreCounter";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { api } from "@/lib/api";
-import { saveRecentSession } from "@/lib/storage";
+import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_TEXT = `Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power biochemical reactions. This chemical energy is stored in a small molecule called adenosine triphosphate (ATP). 
@@ -31,6 +32,14 @@ const COUNT_OPTIONS = [
   { label: "15 Questions", value: 15 },
 ];
 
+const QUIZ_SECTIONS = [
+  { title: "Multiple Choice Questions", description: "Calibrated four-option questions targeting core mechanisms." },
+  { title: "Progress Rail", description: "Real-time navigation tracking answered and pending questions." },
+  { title: "Instant Feedback", description: "Immediate validation revealing correct answers and rationales." },
+  { title: "Pedagogical Explanations", description: "Expandable disclosures clarifying underlying principles." },
+  { title: "Final Score Assessment", description: "Animated score count-up and comprehensive question review." },
+];
+
 export function QuizGenerator() {
   usePageMeta(
     "Quiz Generator",
@@ -41,30 +50,18 @@ export function QuizGenerator() {
   const [text, setText] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
   const [count, setCount] = useState(5);
-  const [status, setStatus] = useState("initial"); // initial | loading | playing | finished | error
+  const [status, setStatus] = useState("empty"); // empty | loading | playing | finished | error
   const [error, setError] = useState(null);
   const [quizData, setQuizData] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [limits, setLimits] = useState({ min: 20, max: 20000 });
+  const [limits, setLimits] = useState({ min: 20, max: 10000 });
+  const draftTimerRef = useRef(null);
 
   // Quiz taking state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [explanationOpen, setExplanationOpen] = useState(false);
 
-  useEffect(() => {
-    if (location.state?.session) {
-      const { input, result } = location.state.session;
-      if (input) setText(input);
-      if (result?.questions) {
-        setQuizData(result);
-        setStatus("playing");
-        setCurrentIndex(0);
-        setUserAnswers({});
-      }
-    }
-  }, [location.state]);
-
+  // Load limits from backend /api/config
   useEffect(() => {
     api.getConfig()
       .then((cfg) => {
@@ -75,10 +72,55 @@ export function QuizGenerator() {
       .catch(() => {});
   }, []);
 
+  // Restore session from navigation or draft
+  useEffect(() => {
+    if (location.state?.session) {
+      const { input, result } = location.state.session;
+      if (input) setText(input);
+      if (result?.questions) {
+        setQuizData(result);
+        setStatus("playing");
+        setCurrentIndex(0);
+        setUserAnswers({});
+      }
+    } else {
+      const draft = getDraft("quiz");
+      if (draft && typeof draft === "string") {
+        setText(draft);
+      }
+    }
+  }, [location.state]);
+
+  // Debounced autosave draft (500ms)
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (val.trim()) {
+        saveDraft("quiz", val);
+      } else {
+        clearDraft("quiz");
+      }
+    }, 500);
+  };
+
   const charCount = text.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
   const isValid = charCount >= limits.min && charCount <= limits.max;
+
+  // Disabled reason for submit button (A7)
+  let disabledReason = "";
+  if (status === "loading") {
+    disabledReason = "Generating quiz questions, please wait...";
+  } else if (charCount === 0) {
+    disabledReason = `Enter at least ${limits.min} characters to generate a practice quiz.`;
+  } else if (isTooShort) {
+    disabledReason = `Enter at least ${limits.min} characters (${limits.min - charCount} more needed).`;
+  } else if (isTooLong) {
+    disabledReason = `Text exceeds the maximum limit by ${(charCount - limits.max).toLocaleString()} characters.`;
+  }
 
   const handleGenerate = async (e) => {
     if (e) e.preventDefault();
@@ -91,13 +133,13 @@ export function QuizGenerator() {
     setExplanationOpen(false);
 
     try {
-      const data = await api.generateQuiz(text.trim(), difficulty, count);
+      const data = await api.generateQuiz(text.trim(), difficulty, Number(count));
       setQuizData(data);
       setStatus("playing");
       saveRecentSession({
         tool: "quiz",
         toolName: "Quiz Generator",
-        title: `${difficulty.toUpperCase()} Quiz: ${text.split("\n")[0].slice(0, 50)}`,
+        title: `${difficulty.toUpperCase()} Quiz (${data.questions?.length || count} Qs)`,
         input: text,
         result: data,
       });
@@ -116,29 +158,61 @@ export function QuizGenerator() {
 
   const handleUseExample = () => {
     setText(SAMPLE_TEXT);
-    setStatus("initial");
+    saveDraft("quiz", SAMPLE_TEXT);
+    setStatus("empty");
     setQuizData(null);
   };
 
   const handleClear = () => {
     setText("");
-    setStatus("initial");
+    clearDraft("quiz");
+    setStatus("empty");
     setQuizData(null);
     setError(null);
+    setUserAnswers({});
+    setCurrentIndex(0);
   };
 
-  const currentQuestion = quizData?.questions?.[currentIndex];
-  const hasAnsweredCurrent = userAnswers[currentIndex] !== undefined;
-  const totalQuestions = quizData?.questions?.length || 0;
+  // Keyboard navigation for active quiz (keys 1-4, Enter)
+  useEffect(() => {
+    if (status !== "playing" || !quizData?.questions) return;
 
-  const handleSelectOption = (optIdx) => {
-    if (hasAnsweredCurrent) return;
-    setUserAnswers((prev) => ({ ...prev, [currentIndex]: optIdx }));
+    const handleQuizKeyboard = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      const q = quizData.questions[currentIndex];
+      const isAnswered = userAnswers[currentIndex] !== undefined;
+
+      if (!isAnswered && ["1", "2", "3", "4"].includes(e.key)) {
+        const optionIdx = parseInt(e.key, 10) - 1;
+        if (q && optionIdx < q.options.length) {
+          e.preventDefault();
+          handleSelectAnswer(optionIdx);
+        }
+      }
+
+      if (isAnswered && e.key === "Enter") {
+        e.preventDefault();
+        handleNextQuestion();
+      }
+    };
+
+    window.addEventListener("keydown", handleQuizKeyboard);
+    return () => window.removeEventListener("keydown", handleQuizKeyboard);
+  }, [status, currentIndex, userAnswers, quizData]);
+
+  const handleSelectAnswer = (optionIdx) => {
+    if (userAnswers[currentIndex] !== undefined) return;
+    setUserAnswers((prev) => ({
+      ...prev,
+      [currentIndex]: optionIdx,
+    }));
     setExplanationOpen(true);
   };
 
   const handleNextQuestion = () => {
-    if (currentIndex + 1 < totalQuestions) {
+    if (!quizData?.questions) return;
+    if (currentIndex < quizData.questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setExplanationOpen(false);
     } else {
@@ -146,484 +220,407 @@ export function QuizGenerator() {
     }
   };
 
-  const handleRestart = () => {
-    setCurrentIndex(0);
+  const handleRestartQuiz = () => {
     setUserAnswers({});
+    setCurrentIndex(0);
     setExplanationOpen(false);
     setStatus("playing");
   };
 
-  const correctCount = quizData?.questions?.reduce((acc, q, idx) => {
-    return userAnswers[idx] === q.correct_index ? acc + 1 : acc;
-  }, 0) || 0;
+  const questions = quizData?.questions || [];
+  const currentQuestion = questions[currentIndex];
+  const answeredCount = Object.keys(userAnswers).length;
 
-  const scorePercentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const score = Object.entries(userAnswers).reduce((acc, [qIdx, ansIdx]) => {
+    const q = questions[parseInt(qIdx, 10)];
+    return q && q.correct_index === ansIdx ? acc + 1 : acc;
+  }, 0);
 
-  const handleCopyQuiz = () => {
-    if (!quizData?.questions) return;
-    const lines = quizData.questions.map((q, i) => {
-      const opts = q.options.map((o, oIdx) => `   ${String.fromCharCode(65 + oIdx)}. ${o}`).join("\n");
-      return `${i + 1}. ${q.question}\n${opts}\n   Answer: ${String.fromCharCode(65 + q.correct_index)}\n   Explanation: ${q.explanation}\n`;
-    });
-    navigator.clipboard.writeText(lines.join("\n"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const rawMarkdown = quizData
+    ? `# Practice Quiz: ${difficulty.toUpperCase()} (${questions.length} Questions)\n\n` +
+      questions
+        .map(
+          (q, i) =>
+            `### Q${i + 1}: ${q.question}\n` +
+            q.options.map((opt, optIdx) => `${String.fromCharCode(65 + optIdx)}) ${opt}`).join("\n") +
+            `\n\n**Answer:** ${String.fromCharCode(65 + q.correct_index)} - ${q.options[q.correct_index]}\n` +
+            `**Explanation:** ${q.explanation}\n`
+        )
+        .join("\n---\n\n")
+    : null;
 
-  // Keyboard navigation when taking quiz
-  useEffect(() => {
-    if (status !== "playing" || !currentQuestion) return;
-
-    const onKey = (e) => {
-      if (["1", "2", "3", "4"].includes(e.key) && !hasAnsweredCurrent) {
-        handleSelectOption(parseInt(e.key, 10) - 1);
-      } else if (e.key === "Enter" && hasAnsweredCurrent) {
-        handleNextQuestion();
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [status, currentQuestion, hasAnsweredCurrent, currentIndex]);
-
-  return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div className="space-y-1">
-        <h1 className="font-serif text-2xl sm:text-3xl font-medium text-ink tracking-tight">
-          Quiz Generator
-        </h1>
-        <p className="text-xs text-ink-secondary">
-          Generate multiple choice practice questions with instant answer feedback and step-by-step explanations.
-        </p>
-      </div>
-
-      {/* Split view at 1280px (xl:), stacked below */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Input and Configuration */}
-        <div className="xl:col-span-5 space-y-4">
-          <Card className="p-5 sm:p-6 space-y-4">
-            <form onSubmit={handleGenerate} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label htmlFor="quiz-input" className="text-xs font-semibold text-ink">
-                  Source Material
-                </label>
-                <button
-                  type="button"
-                  onClick={handleUseExample}
-                  className="text-[11px] text-brand hover:underline font-medium"
-                >
-                  Use an example
-                </button>
-              </div>
-
-              <textarea
-                id="quiz-input"
-                rows={9}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Paste study material or notes to generate questions from (minimum 20 characters)..."
-                disabled={status === "loading" || status === "playing"}
-                className={cn(
-                  "w-full px-3.5 py-2.5 text-xs sm:text-sm text-ink bg-white border rounded-md transition-colors resize-y leading-relaxed",
-                  "placeholder:text-ink-subtle/70 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand",
-                  isTooShort && "border-feedback-warning",
-                  isTooLong && "border-feedback-error",
-                  !isTooShort && !isTooLong && "border-ink-border"
-                )}
-              />
-
-              {/* Inline Character Count & Validation Hint */}
-              <div className="flex items-center justify-between text-[11px]">
-                <span
-                  className={cn(
-                    isTooShort
-                      ? "text-feedback-warning"
-                      : isTooLong
-                      ? "text-feedback-error"
-                      : "text-ink-subtle"
-                  )}
-                >
-                  {isTooShort
-                    ? `Enter at least ${limits.min} characters (${limits.min - charCount} more needed)`
-                    : isTooLong
-                    ? `Exceeds limit of ${limits.max} characters`
-                    : "Press Cmd or Ctrl + Enter to submit"}
-                </span>
-                <span className="tabular-nums text-ink-subtle">
-                  {charCount} / {limits.max}
-                </span>
-              </div>
-
-              {/* Settings: Difficulty & Question Count */}
-              <div className="space-y-3 pt-2 border-t border-ink-border">
-                <div className="space-y-1.5">
-                  <span className="text-xs font-semibold text-ink block">Difficulty</span>
-                  <SegmentedControl
-                    options={DIFFICULTY_OPTIONS}
-                    value={difficulty}
-                    onChange={(val) => setDifficulty(val)}
-                    ariaLabel="Select difficulty"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <span className="text-xs font-semibold text-ink block">Number of Questions</span>
-                  <SegmentedControl
-                    options={COUNT_OPTIONS}
-                    value={count}
-                    onChange={(val) => setCount(Number(val))}
-                    ariaLabel="Select question count"
-                  />
-                </div>
-              </div>
-
-              {/* Actions: Clear, Generate */}
-              <div className="flex items-center justify-between pt-3 border-t border-ink-border">
-                {text.length > 0 && status !== "loading" ? (
-                  <Button type="button" variant="subtle" size="sm" onClick={handleClear}>
-                    Clear
-                  </Button>
-                ) : (
-                  <div />
-                )}
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  disabled={!isValid || status === "loading" || status === "playing"}
-                >
-                  {status === "loading" ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.75} />
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
-                      <span>Generate Quiz</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Card>
-
-          {/* Error Alert with Retry */}
-          {status === "error" && (
-            <Alert variant="error" title="Quiz Generation Error" onClose={() => setStatus("initial")}>
-              <div className="space-y-2">
-                <p>{error}</p>
-                <Button variant="secondary" size="sm" onClick={handleGenerate}>
-                  <RefreshCw className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span>Retry</span>
-                </Button>
-              </div>
-            </Alert>
-          )}
+  const inputPanel = (
+    <InputPanel onSubmit={handleGenerate}>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="quiz-input" className="text-xs font-semibold text-ink">
+            Study Material
+          </label>
+          <button
+            type="button"
+            onClick={handleUseExample}
+            className="text-[11px] text-brand hover:underline font-medium"
+          >
+            Use an example
+          </button>
         </div>
 
-        {/* Right Column: Quiz Preview / Interactive Quiz Runner / Results */}
-        <div className="xl:col-span-7 space-y-4">
-          {/* INITIAL EMPTY STATE */}
-          {status === "initial" && (
-            <Card className="p-6 space-y-4 border-dashed">
-              <div className="space-y-1">
-                <h3 className="font-serif text-base font-medium text-ink">
-                  Quiz Preview
-                </h3>
-                <p className="text-xs text-ink-secondary">
-                  Your generated practice quiz will appear here. The quiz workflow includes:
-                </p>
-              </div>
-
-              <ol className="space-y-2 text-xs text-ink-secondary border-t border-ink-border pt-4">
-                <li className="flex items-start gap-2">
-                  <span className="font-semibold text-brand min-w-[1.25rem]">1.</span>
-                  <div>
-                    <span className="font-medium text-ink">One Question at a Time</span>: Focused single-question display with keyboard shortcuts (1 to 4).
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-semibold text-brand min-w-[1.25rem]">2.</span>
-                  <div>
-                    <span className="font-medium text-ink">Progress Rail</span>: Live indicator showing exact progress across your questions.
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-semibold text-brand min-w-[1.25rem]">3.</span>
-                  <div>
-                    <span className="font-medium text-ink">Immediate Answer Feedback</span>: Visual green or red indicators after selection.
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-semibold text-brand min-w-[1.25rem]">4.</span>
-                  <div>
-                    <span className="font-medium text-ink">Expandable Explanations</span>: Detailed rationale explaining why the correct choice is right.
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-semibold text-brand min-w-[1.25rem]">5.</span>
-                  <div>
-                    <span className="font-medium text-ink">Final Review Screen</span>: Score calculation and question-by-question breakdown.
-                  </div>
-                </li>
-              </ol>
-            </Card>
+        <textarea
+          id="quiz-input"
+          value={text}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Paste lecture notes or textbook chapters to generate practice questions..."
+          rows={7}
+          disabled={status === "loading"}
+          aria-describedby={!isValid ? "submit-disabled-reason" : undefined}
+          className={cn(
+            "w-full text-xs sm:text-sm font-sans px-3.5 py-2.5 bg-white border rounded resize-y focus:outline-none focus:ring-1 transition-colors leading-relaxed",
+            isTooLong
+              ? "border-feedback-error focus:border-feedback-error focus:ring-feedback-error"
+              : "border-ink-border focus:border-brand focus:ring-brand",
+            status === "loading" && "bg-[#F5F4F0]"
           )}
+        />
 
-          {/* LOADING STATE */}
-          {status === "loading" && (
-            <div className="space-y-4" aria-busy="true" aria-live="polite">
-              <div className="text-xs text-ink-secondary flex items-center gap-2 mb-1">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand" strokeWidth={1.75} />
-                <span>Generating and validating {count} questions at {difficulty} level...</span>
-              </div>
-              <Card className="p-6 space-y-4">
-                <div className="h-4 bg-[#EAE8E3] rounded w-1/4 animate-pulse" />
-                <div className="h-5 bg-[#F2F0EB] rounded w-4/5 animate-pulse" />
-                <div className="space-y-2 pt-2">
-                  <div className="h-10 bg-[#FAF9F6] border border-ink-border rounded-md animate-pulse" />
-                  <div className="h-10 bg-[#FAF9F6] border border-ink-border rounded-md animate-pulse" />
-                  <div className="h-10 bg-[#FAF9F6] border border-ink-border rounded-md animate-pulse" />
-                  <div className="h-10 bg-[#FAF9F6] border border-ink-border rounded-md animate-pulse" />
-                </div>
-              </Card>
+        <FieldCounter
+          count={charCount}
+          max={limits.max}
+          min={limits.min}
+          helperText="20 to 10,000 characters. Input validated live."
+        />
+      </div>
+
+      {/* Difficulty Setting */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-ink block">
+          Difficulty Level
+        </label>
+        <SegmentedControl
+          options={DIFFICULTY_OPTIONS}
+          value={difficulty}
+          onChange={setDifficulty}
+          ariaLabel="Select difficulty"
+        />
+      </div>
+
+      {/* Question Count Setting */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-ink block">
+          Number of Questions
+        </label>
+        <SegmentedControl
+          options={COUNT_OPTIONS}
+          value={count}
+          onChange={(val) => setCount(Number(val))}
+          ariaLabel="Select question count"
+        />
+      </div>
+
+      {/* Action Buttons & Disabled Reason */}
+      <div className="pt-2 border-t border-ink-border space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            disabled={status === "loading" || !text}
+          >
+            <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>Clear</span>
+          </Button>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            disabled={!isValid || status === "loading"}
+            aria-describedby={!isValid ? "submit-disabled-reason" : undefined}
+          >
+            {status === "loading" ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} />
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <span>{status === "playing" || status === "finished" ? "Regenerate" : "Generate Quiz"}</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        {!isValid && disabledReason && (
+          <p
+            id="submit-disabled-reason"
+            className="text-[11px] text-ink-subtle text-right"
+          >
+            {disabledReason}
+          </p>
+        )}
+
+        {isValid && (
+          <p className="text-[11px] text-ink-subtle text-right">
+            Press <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Cmd</kbd> + <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Enter</kbd> to submit
+          </p>
+        )}
+      </div>
+    </InputPanel>
+  );
+
+  const resultPanel = (
+    <ResultPanel
+      status={status}
+      error={error}
+      onRetry={() => handleGenerate()}
+      sections={QUIZ_SECTIONS}
+      title="Practice Quiz"
+      badge={questions.length > 0 ? `${questions.length} questions` : null}
+      rawMarkdown={rawMarkdown}
+      filename="studymate-quiz.md"
+    >
+      {/* Active Quiz Taking State */}
+      {status === "playing" && currentQuestion && (
+        <div className="space-y-6">
+          {/* Progress Strip */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-medium">
+              <span className="text-ink">
+                Question {currentIndex + 1} of {questions.length}
+              </span>
+              <span className="text-ink-subtle">
+                {answeredCount} of {questions.length} answered
+              </span>
             </div>
-          )}
+            <div className="flex gap-1.5 h-1.5 w-full bg-[#EAE8E3] rounded-full overflow-hidden">
+              {questions.map((_, idx) => {
+                const ans = userAnswers[idx];
+                const isCorrect = ans !== undefined && ans === questions[idx].correct_index;
+                const isWrong = ans !== undefined && ans !== questions[idx].correct_index;
+                const isCurrent = idx === currentIndex;
 
-          {/* PLAYING STATE: Step-by-Step Question Runner */}
-          {status === "playing" && currentQuestion && (
-            <div className="space-y-4" aria-live="polite">
-              {/* Progress Rail */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-ink-secondary">
-                  <span className="font-medium text-ink">
-                    Question {currentIndex + 1} of {totalQuestions}
-                  </span>
-                  <span className="tabular-nums font-semibold text-brand">
-                    {Math.round(((currentIndex + 1) / totalQuestions) * 100)}%
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-[#EAE8E3] rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-brand origin-left"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: (currentIndex + 1) / totalQuestions }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                  />
-                </div>
-              </div>
-
-              {/* Question Card via TransitionPanel */}
-              <Card className="p-6 space-y-5">
-                <TransitionPanel activeIndex={currentIndex} className="w-full">
-                  {quizData.questions.map((q, qIndex) => (
-                    <div key={q.id} className="space-y-5">
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">
-                          Question {qIndex + 1}
-                        </span>
-                        <h3 className="font-serif text-base sm:text-lg font-medium text-ink leading-snug">
-                          {q.question}
-                        </h3>
-                      </div>
-
-                      {/* 4 Options */}
-                      <div className="space-y-2" role="radiogroup" aria-label="Question options">
-                        {q.options.map((option, optIdx) => {
-                          const isSelected = userAnswers[qIndex] === optIdx;
-                          const isCorrect = optIdx === q.correct_index;
-                          const hasAnswered = userAnswers[qIndex] !== undefined;
-
-                          let stateClass = "border-ink-border hover:border-ink hover:bg-black/[0.01]";
-                          if (hasAnswered) {
-                            if (isCorrect) {
-                              stateClass = "border-feedback-success bg-feedback-success-bg text-ink";
-                            } else if (isSelected) {
-                              stateClass = "border-feedback-error bg-feedback-error-bg text-ink";
-                            } else {
-                              stateClass = "border-ink-border/40 opacity-50 text-ink-secondary";
-                            }
-                          }
-
-                          return (
-                            <button
-                              key={optIdx}
-                              type="button"
-                              disabled={hasAnswered}
-                              onClick={() => handleSelectOption(optIdx)}
-                              className={cn(
-                                "w-full text-left p-3 rounded-md border text-xs sm:text-sm font-medium transition-colors duration-150 flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                                stateClass
-                              )}
-                            >
-                              <span
-                                className={cn(
-                                  "w-5 h-5 rounded-[4px] border flex items-center justify-center text-xs shrink-0 mt-0.5",
-                                  hasAnswered && isCorrect
-                                    ? "bg-feedback-success text-white border-feedback-success"
-                                    : hasAnswered && isSelected
-                                    ? "bg-feedback-error text-white border-feedback-error"
-                                    : "border-ink-border bg-[#F5F4F0] text-ink-secondary"
-                                )}
-                              >
-                                {String.fromCharCode(65 + optIdx)}
-                              </span>
-                              <span className="flex-1 leading-relaxed">{option}</span>
-                              {hasAnswered && isCorrect && (
-                                <CheckCircle2 className="w-4 h-4 text-feedback-success shrink-0 mt-0.5" />
-                              )}
-                              {hasAnswered && isSelected && !isCorrect && (
-                                <XCircle className="w-4 h-4 text-feedback-error shrink-0 mt-0.5" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Explanation Drawer via Disclosure */}
-                      {hasAnsweredCurrent && (
-                        <Disclosure open={explanationOpen} onOpenChange={setExplanationOpen}>
-                          <DisclosureTrigger className="w-full text-left pt-1">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-brand hover:underline cursor-pointer">
-                              <span>{userAnswers[currentIndex] === q.correct_index ? "Correct answer" : "Explanation"}</span>
-                              <span>·</span>
-                              <span className="text-[11px] font-normal text-ink-secondary">Click to toggle</span>
-                            </div>
-                          </DisclosureTrigger>
-                          <DisclosureContent className="pt-2">
-                            <div className="p-3.5 rounded-md bg-[#FAF9F6] border border-ink-border text-xs text-ink-secondary leading-relaxed space-y-1">
-                              <span className="font-semibold text-ink block">Explanation:</span>
-                              <p>{q.explanation}</p>
-                            </div>
-                          </DisclosureContent>
-                        </Disclosure>
-                      )}
-
-                      {/* Next / Finish Button */}
-                      <div className="flex items-center justify-between pt-4 border-t border-ink-border">
-                        <span className="text-[11px] text-ink-subtle hidden sm:inline">
-                          Keyboard: 1 to 4 to choose, Enter to continue
-                        </span>
-                        <Button
-                          variant="primary"
-                          size="md"
-                          disabled={!hasAnsweredCurrent}
-                          onClick={handleNextQuestion}
-                          className="ml-auto"
-                        >
-                          <span>{currentIndex + 1 === totalQuestions ? "Finish Quiz" : "Next Question"}</span>
-                          <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </TransitionPanel>
-              </Card>
-            </div>
-          )}
-
-          {/* FINISHED STATE: Results & Review */}
-          {status === "finished" && (
-            <div className="space-y-4">
-              <Card className="p-6 text-center space-y-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-                  Quiz Completed
-                </span>
-                <h3 className="font-serif text-3xl font-medium text-ink">
-                  Score:{" "}
-                  <span className="text-brand font-bold">
-                    <ScoreCounter from={0} to={scorePercentage} duration={0.8} />%
-                  </span>
-                </h3>
-                <p className="text-xs text-ink-secondary">
-                  You got {correctCount} of {totalQuestions} questions correct.
-                </p>
-
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <Button variant="secondary" size="sm" onClick={handleRestart}>
-                    <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    <span>Try Again</span>
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={handleCopyQuiz}>
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-feedback-success" strokeWidth={1.75} />
-                        <span>Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        <span>Copy Questions</span>
-                      </>
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex-1 transition-colors duration-200",
+                      isCorrect && "bg-feedback-success",
+                      isWrong && "bg-feedback-error",
+                      isCurrent && ans === undefined && "bg-brand",
+                      idx > currentIndex && ans === undefined && "bg-transparent"
                     )}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      setStatus("initial");
-                      setQuizData(null);
-                    }}
-                  >
-                    <span>New Quiz</span>
-                  </Button>
-                </div>
-              </Card>
+                  />
+                );
+              })}
+            </div>
+          </div>
 
-              {/* Per-Question Breakdown List */}
-              <div className="space-y-2">
-                <span className="text-xs font-semibold text-ink-subtle uppercase tracking-wider block">
-                  Question Breakdown
+          {/* Question Slide via TransitionPanel */}
+          <TransitionPanel activeIndex={currentIndex}>
+            <div className="space-y-5">
+              <Card className="p-6 space-y-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+                  Multiple Choice Question
                 </span>
-                <AnimatedGroup className="space-y-2">
-                  {quizData.questions.map((q, qIdx) => {
-                    const userChoice = userAnswers[qIdx];
-                    const isPassed = userChoice === q.correct_index;
+                <p className="font-serif text-base sm:text-lg text-ink font-medium leading-snug">
+                  {currentQuestion.question}
+                </p>
+
+                {/* Option Buttons */}
+                <div className="space-y-2.5 pt-2">
+                  {currentQuestion.options.map((option, optIdx) => {
+                    const isSelected = userAnswers[currentIndex] === optIdx;
+                    const isAnswered = userAnswers[currentIndex] !== undefined;
+                    const isCorrectOption = optIdx === currentQuestion.correct_index;
+
+                    let optionStyle = "border-ink-border hover:border-ink hover:bg-black/[0.01]";
+                    if (isAnswered) {
+                      if (isCorrectOption) {
+                        optionStyle = "border-feedback-success bg-feedback-success/5 text-ink";
+                      } else if (isSelected) {
+                        optionStyle = "border-feedback-error bg-feedback-error/5 text-ink";
+                      } else {
+                        optionStyle = "border-ink-border opacity-50";
+                      }
+                    }
 
                     return (
-                      <Card key={q.id} className="p-4 space-y-1.5">
-                        <div className="flex items-start gap-2.5">
-                          {isPassed ? (
-                            <CheckCircle2 className="w-4 h-4 text-feedback-success shrink-0 mt-0.5" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-feedback-error shrink-0 mt-0.5" />
-                          )}
-                          <div className="flex-1 text-xs space-y-1">
-                            <div className="font-serif text-sm font-medium text-ink">
-                              {qIdx + 1}. {q.question}
-                            </div>
-                            <div className="text-ink-secondary">
-                              <span className="font-medium text-ink">Your answer:</span>{" "}
-                              <span className={isPassed ? "text-feedback-success" : "text-feedback-error"}>
-                                {userChoice !== undefined ? q.options[userChoice] : "Unanswered"}
-                              </span>
-                            </div>
-                            {!isPassed && (
-                              <div className="text-ink-secondary">
-                                <span className="font-medium text-ink">Correct answer:</span>{" "}
-                                <span className="text-feedback-success font-medium">
-                                  {q.options[q.correct_index]}
-                                </span>
-                              </div>
-                            )}
-                            <p className="text-ink-subtle pt-1 border-t border-ink-border/50">
-                              {q.explanation}
-                            </p>
-                          </div>
+                      <button
+                        key={optIdx}
+                        type="button"
+                        onClick={() => handleSelectAnswer(optIdx)}
+                        disabled={isAnswered}
+                        className={cn(
+                          "w-full text-left p-3.5 rounded border text-xs sm:text-sm transition-all duration-150 flex items-center justify-between gap-3",
+                          optionStyle
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-[11px] font-mono font-medium text-ink shrink-0">
+                            {String.fromCharCode(65 + optIdx)}
+                          </span>
+                          <span className="leading-relaxed">{option}</span>
                         </div>
-                      </Card>
+
+                        {isAnswered && isCorrectOption && (
+                          <CheckCircle2 className="w-4 h-4 text-feedback-success shrink-0" />
+                        )}
+                        {isAnswered && isSelected && !isCorrectOption && (
+                          <XCircle className="w-4 h-4 text-feedback-error shrink-0" />
+                        )}
+                      </button>
                     );
                   })}
-                </AnimatedGroup>
-              </div>
+                </div>
+              </Card>
+
+              {/* Expandable Explanation using Disclosure */}
+              {userAnswers[currentIndex] !== undefined && (
+                <Disclosure open={explanationOpen} className="p-5 bg-[#FCFBFA] border border-ink-border rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-ink">
+                      Explanation
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExplanationOpen(!explanationOpen)}
+                      className="text-[11px] text-brand hover:underline font-medium"
+                    >
+                      {explanationOpen ? "Collapse" : "Expand"}
+                    </button>
+                  </div>
+                  <DisclosureContent>
+                    <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed pt-1">
+                      {currentQuestion.explanation}
+                    </p>
+                  </DisclosureContent>
+                </Disclosure>
+              )}
+
+              {/* Next Question Navigation */}
+              {userAnswers[currentIndex] !== undefined && (
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    onClick={handleNextQuestion}
+                  >
+                    <span>
+                      {currentIndex < questions.length - 1 ? "Next Question" : "Complete Quiz"}
+                    </span>
+                    <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </TransitionPanel>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Quiz Finished & Results Breakdown State */}
+      {status === "finished" && (
+        <div className="space-y-6">
+          <Card className="p-6 sm:p-8 text-center space-y-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+              Practice Assessment Complete
+            </span>
+
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="font-serif text-4xl sm:text-5xl font-semibold text-ink">
+                <ScoreCounter value={score} duration={0.7} />
+              </span>
+              <span className="text-xl sm:text-2xl text-ink-secondary font-serif">
+                / {questions.length}
+              </span>
+            </div>
+
+            <p className="text-xs text-ink-secondary max-w-sm mx-auto leading-relaxed">
+              {score === questions.length
+                ? "Flawless score. You demonstrated comprehensive grasp of all tested concepts."
+                : score >= questions.length / 2
+                ? "Solid performance. Review the questions you missed below to reinforce retention."
+                : "Good initial practice. Re-read the source notes and attempt the quiz again."}
+            </p>
+
+            <div className="pt-2 flex justify-center gap-3">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleRestartQuiz}
+              >
+                <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <span>Retake Quiz</span>
+              </Button>
+            </div>
+          </Card>
+
+          {/* Per-Question Comprehensive Review List */}
+          <div className="space-y-3">
+            <h3 className="font-serif text-lg font-medium text-ink">
+              Detailed Question Review
+            </h3>
+
+            {questions.map((q, idx) => {
+              const userAns = userAnswers[idx];
+              const isCorrect = userAns === q.correct_index;
+
+              return (
+                <Card key={idx} className="p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-[11px] font-mono font-medium text-ink shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <p className="text-xs sm:text-sm font-medium text-ink leading-snug">
+                        {q.question}
+                      </p>
+                    </div>
+
+                    {isCorrect ? (
+                      <span className="text-feedback-success flex items-center gap-1 text-[11px] font-semibold shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        <span>Correct</span>
+                      </span>
+                    ) : (
+                      <span className="text-feedback-error flex items-center gap-1 text-[11px] font-semibold shrink-0">
+                        <XCircle className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        <span>Missed</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="pl-7 space-y-1.5 text-xs">
+                    <p className="text-ink">
+                      <strong className="text-ink-secondary">Correct Answer:</strong> {q.options[q.correct_index]}
+                    </p>
+                    {!isCorrect && userAns !== undefined && (
+                      <p className="text-feedback-error">
+                        <strong>Your Answer:</strong> {q.options[userAns]}
+                      </p>
+                    )}
+                    <p className="text-ink-secondary leading-relaxed pt-1 border-t border-ink-border/50">
+                      {q.explanation}
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </ResultPanel>
+  );
+
+  return (
+    <ToolLayout
+      title="Quiz Generator"
+      description="Convert study notes into four-option multiple choice questions with progress tracking, immediate answers, and detailed explanations."
+      inputPanel={inputPanel}
+      resultPanel={resultPanel}
+    />
   );
 }

@@ -1,19 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { PenLine, RefreshCw, Copy, Check, RotateCcw, AlertCircle, ArrowRight, Columns, LayoutGrid } from "lucide-react";
+import { PenLine, RefreshCw, RotateCcw, Columns, LayoutGrid, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
-import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
+import { Card } from "@/components/ui/Card";
+import { FieldCounter } from "@/components/ui/FieldCounter";
+import { ToolLayout } from "@/components/layout/ToolLayout";
+import { InputPanel } from "@/components/ui/InputPanel";
+import { ResultPanel } from "@/components/ui/ResultPanel";
 import { DiffHighlighter } from "@/components/tools/DiffHighlighter";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { api } from "@/lib/api";
-import { saveRecentSession } from "@/lib/storage";
+import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_ANSWER = `Mitochondria are known as the powerhouse of the cell because they make ATP which the cell needs for energy. They have two membranes, an inner one and an outer one. The inner membrane has folds called cristae that give more surface area. Inside is the matrix where the Krebs cycle happens. During cellular respiration, glucose is broken down to produce ATP through oxidative phosphorylation across the inner mitochondrial membrane.`;
 const SAMPLE_TOPIC = "Cell Biology: Cellular Respiration";
+
+const IMPROVER_SECTIONS = [
+  { title: "Original Answer Feedback", description: "Assessment of clarity, structure, and academic precision." },
+  { title: "Improved Answer", description: "Polished revision retaining your original facts with elevated vocabulary." },
+  { title: "Key Improvements Made", description: "Concrete explanations of phrasing substitutions and structural enhancements." },
+  { title: "Suggestions for Further Improvement", description: "Actionable recommendations for deepening your understanding and exam readiness." },
+];
 
 export function AnswerImprover() {
   usePageMeta(
@@ -25,26 +34,32 @@ export function AnswerImprover() {
   const [answer, setAnswer] = useState("");
   const [subjectOrTopic, setSubjectOrTopic] = useState("");
   const [viewMode, setViewMode] = useState("side-by-side"); // "side-by-side" | "stacked"
-  const [status, setStatus] = useState("initial"); // initial | loading | success | error
+  const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [limits, setLimits] = useState({ min: 10, max: 5000, subject_max: 200 });
+  const draftTimerRef = useRef(null);
 
+  // Restore session from navigation or draft
   useEffect(() => {
     if (location.state?.session) {
       const { input, result: savedResult } = location.state.session;
       if (input) setAnswer(input);
       if (savedResult) {
         setResult(savedResult);
-        if (savedResult.subject_or_topic) {
-          setSubjectOrTopic(savedResult.subject_or_topic);
-        }
+        if (savedResult.subject_or_topic) setSubjectOrTopic(savedResult.subject_or_topic);
         setStatus("success");
+      }
+    } else {
+      const draft = getDraft("improver");
+      if (draft && typeof draft === "object") {
+        if (draft.answer) setAnswer(draft.answer);
+        if (draft.subjectOrTopic) setSubjectOrTopic(draft.subjectOrTopic);
       }
     }
   }, [location.state]);
 
+  // Load limits from backend /api/config
   useEffect(() => {
     api.getConfig()
       .then((cfg) => {
@@ -59,10 +74,46 @@ export function AnswerImprover() {
       .catch(() => {});
   }, []);
 
+  // Debounced autosave draft (500ms)
+  const saveCurrentDraft = (newAnswer, newTopic) => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (newAnswer.trim() || newTopic.trim()) {
+        saveDraft("improver", { answer: newAnswer, subjectOrTopic: newTopic });
+      } else {
+        clearDraft("improver");
+      }
+    }, 500);
+  };
+
+  const handleAnswerChange = (e) => {
+    const val = e.target.value;
+    setAnswer(val);
+    saveCurrentDraft(val, subjectOrTopic);
+  };
+
+  const handleSubjectChange = (e) => {
+    const val = e.target.value.slice(0, limits.subject_max);
+    setSubjectOrTopic(val);
+    saveCurrentDraft(answer, val);
+  };
+
   const charCount = answer.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
   const isValid = charCount >= limits.min && charCount <= limits.max;
+
+  // Disabled reason for submit button (A7)
+  let disabledReason = "";
+  if (status === "loading") {
+    disabledReason = "Analyzing draft answer, please wait...";
+  } else if (charCount === 0) {
+    disabledReason = `Paste your draft answer (${limits.min} to ${limits.max.toLocaleString()} characters).`;
+  } else if (isTooShort) {
+    disabledReason = `Enter at least ${limits.min} characters (${limits.min - charCount} more needed).`;
+  } else if (isTooLong) {
+    disabledReason = `Answer exceeds maximum limit by ${(charCount - limits.max).toLocaleString()} characters.`;
+  }
 
   const handleGenerate = async (e) => {
     if (e) e.preventDefault();
@@ -101,474 +152,344 @@ export function AnswerImprover() {
   const handleUseExample = () => {
     setAnswer(SAMPLE_ANSWER);
     setSubjectOrTopic(SAMPLE_TOPIC);
-    setStatus("initial");
+    saveDraft("improver", { answer: SAMPLE_ANSWER, subjectOrTopic: SAMPLE_TOPIC });
+    setStatus("empty");
     setResult(null);
   };
 
   const handleClear = () => {
     setAnswer("");
     setSubjectOrTopic("");
-    setStatus("initial");
+    clearDraft("improver");
+    setStatus("empty");
     setResult(null);
     setError(null);
   };
 
-  const handleCopyImproved = () => {
-    if (!result?.improved_answer) return;
-    navigator.clipboard.writeText(result.improved_answer);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const rawMarkdown = result
+    ? `# Answer Improvement Analysis\n\n` +
+      (result.subject_or_topic ? `**Topic:** ${result.subject_or_topic}\n\n` : "") +
+      `## 1. Original Answer Feedback\n${result.original_answer_feedback}\n\n` +
+      `## 2. Improved Answer\n${result.improved_answer}\n\n` +
+      `## 3. Key Improvements Made\n` +
+      result.key_improvements_made.map((item) => `- ${item}`).join("\n") +
+      `\n\n## 4. Suggestions for Further Improvement\n` +
+      result.suggestions_for_further_improvement.map((item) => `- ${item}`).join("\n")
+    : null;
 
-  return (
-    <div className="space-y-6">
-      {/* Title & Short Description */}
-      <div className="space-y-1">
-        <h1 className="font-serif text-2xl sm:text-3xl font-medium text-ink tracking-tight">
-          Answer Improver
-        </h1>
-        <p className="text-xs text-ink-secondary">
-          Paste your draft response to get structural feedback, side-by-side wording refinements, and suggestions without introducing new facts.
-        </p>
+  const inputPanel = (
+    <InputPanel onSubmit={handleGenerate}>
+      {/* Optional Subject Context */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="improver-subject" className="text-xs font-semibold text-ink">
+            Subject or Topic <span className="text-ink-subtle font-normal">(optional)</span>
+          </label>
+          <span className="text-[11px] text-ink-subtle tabular-nums font-sans">
+            {subjectOrTopic.length} / {limits.subject_max}
+          </span>
+        </div>
+        <input
+          id="improver-subject"
+          type="text"
+          value={subjectOrTopic}
+          onChange={handleSubjectChange}
+          placeholder="E.g., Cell Biology, Macroeconomics, Modern History"
+          maxLength={limits.subject_max}
+          disabled={status === "loading"}
+          className="w-full text-xs px-3 py-2 bg-white border border-ink-border rounded focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand disabled:bg-[#F5F4F0] truncate transition-colors"
+        />
       </div>
 
-      {/* Split view at 1280px (xl:), stacked below */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Input and Controls */}
-        <div className="xl:col-span-5 space-y-4">
-          <Card className="p-5 sm:p-6 space-y-4">
-            <form onSubmit={handleGenerate} className="space-y-4">
-              {/* Optional Subject or Topic Context */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="improver-subject" className="text-xs font-semibold text-ink">
-                    Subject or Topic <span className="text-ink-subtle font-normal">(optional)</span>
-                  </label>
-                  <span className="text-[11px] text-ink-subtle font-mono">
-                    {subjectOrTopic.length}/{limits.subject_max}
-                  </span>
-                </div>
-                <input
-                  id="improver-subject"
-                  type="text"
-                  value={subjectOrTopic}
-                  onChange={(e) => setSubjectOrTopic(e.target.value.slice(0, limits.subject_max))}
-                  placeholder="E.g., Cell Biology, Macroeconomics, Modern History"
-                  maxLength={limits.subject_max}
-                  disabled={status === "loading"}
-                  className="w-full text-xs px-3 py-2 bg-white border border-ink-border rounded focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand disabled:bg-[#F5F4F0] transition-colors"
-                />
-              </div>
-
-              {/* Student Draft Answer */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="improver-answer" className="text-xs font-semibold text-ink">
-                    Your Draft Answer
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleUseExample}
-                    className="text-[11px] text-brand hover:underline font-medium"
-                  >
-                    Use an example
-                  </button>
-                </div>
-                <textarea
-                  id="improver-answer"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Paste your draft answer here (minimum 10 characters)..."
-                  rows={9}
-                  disabled={status === "loading"}
-                  className={cn(
-                    "w-full text-xs sm:text-sm font-sans px-3.5 py-2.5 bg-white border rounded resize-y focus:outline-none focus:ring-1 transition-colors leading-relaxed",
-                    isTooLong
-                      ? "border-feedback-error focus:border-feedback-error focus:ring-feedback-error"
-                      : "border-ink-border focus:border-brand focus:ring-brand",
-                    status === "loading" && "bg-[#F5F4F0]"
-                  )}
-                />
-
-                {/* Inline Character Counter and Validation Hints */}
-                <div className="flex items-center justify-between text-[11px]">
-                  <div>
-                    {isTooShort && (
-                      <span className="text-feedback-error">
-                        Minimum {limits.min} characters required ({limits.min - charCount} more needed).
-                      </span>
-                    )}
-                    {isTooLong && (
-                      <span className="text-feedback-error">
-                        Maximum {limits.max.toLocaleString()} characters exceeded by {(charCount - limits.max).toLocaleString()}.
-                      </span>
-                    )}
-                    {!isTooShort && !isTooLong && (
-                      <span className="text-ink-subtle">
-                        Preserves your factual arguments while refining tone and structure.
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "font-mono",
-                      isTooLong ? "text-feedback-error font-medium" : "text-ink-subtle"
-                    )}
-                  >
-                    {charCount.toLocaleString()} / {limits.max.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-between gap-3 border-t border-ink-border">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClear}
-                  disabled={status === "loading" || (!answer && !subjectOrTopic)}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Clear</span>
-                </Button>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={!isValid || status === "loading"}
-                  >
-                    {status === "loading" ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Improving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <PenLine className="w-3.5 h-3.5" />
-                        <span>{status === "success" ? "Regenerate" : "Improve Answer"}</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-ink-subtle text-right">
-                Press <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Cmd</kbd> + <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Enter</kbd> to submit
-              </p>
-            </form>
-          </Card>
+      {/* Student Draft Answer */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="improver-answer" className="text-xs font-semibold text-ink">
+            Your Draft Answer
+          </label>
+          <button
+            type="button"
+            onClick={handleUseExample}
+            className="text-[11px] text-brand hover:underline font-medium"
+          >
+            Use an example
+          </button>
         </div>
 
-        {/* Right Column: Output Panel */}
-        <div className="xl:col-span-7 space-y-4">
-          {/* Error Banner with Retry */}
-          {status === "error" && (
-            <Alert variant="error" title="Improvement Failed" onClose={() => setStatus("initial")}>
-              <div className="space-y-2">
-                <p>{error}</p>
-                <Button variant="secondary" size="sm" onClick={() => handleGenerate()} className="mt-1">
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Retry</span>
-                </Button>
-              </div>
-            </Alert>
+        <textarea
+          id="improver-answer"
+          value={answer}
+          onChange={handleAnswerChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Paste your draft answer here (minimum 10 characters)..."
+          rows={9}
+          disabled={status === "loading"}
+          aria-describedby={!isValid ? "submit-disabled-reason" : undefined}
+          className={cn(
+            "w-full text-xs sm:text-sm font-sans px-3.5 py-2.5 bg-white border rounded resize-y focus:outline-none focus:ring-1 transition-colors leading-relaxed",
+            isTooLong
+              ? "border-feedback-error focus:border-feedback-error focus:ring-feedback-error"
+              : "border-ink-border focus:border-brand focus:ring-brand",
+            status === "loading" && "bg-[#F5F4F0]"
           )}
+        />
 
-          {/* Empty Initial State: Ordered Section Preview */}
-          {status === "initial" && (
-            <Card className="p-6 sm:p-8 space-y-5 bg-[#FCFBFA]">
-              <div className="space-y-1">
-                <h3 className="font-serif text-lg font-medium text-ink">
-                  Expected Output Structure
-                </h3>
-                <p className="text-xs text-ink-secondary">
-                  When you submit your draft answer, StudyMate AI provides four structured analysis sections:
-                </p>
-              </div>
+        <FieldCounter
+          count={charCount}
+          max={limits.max}
+          min={limits.min}
+          helperText="10 to 5,000 characters. Factual arguments strictly retained."
+        />
+      </div>
 
-              <ol className="space-y-3 text-xs">
-                <li className="flex items-start gap-3 p-3 bg-white border border-ink-border rounded">
-                  <span className="w-5 h-5 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-[11px] shrink-0">
-                    1
+      {/* Action Buttons & Disabled Reason */}
+      <div className="pt-2 border-t border-ink-border space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            disabled={status === "loading" || (!answer && !subjectOrTopic)}
+          >
+            <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>Clear</span>
+          </Button>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            disabled={!isValid || status === "loading"}
+            aria-describedby={!isValid ? "submit-disabled-reason" : undefined}
+          >
+            {status === "loading" ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} />
+                <span>Improving...</span>
+              </>
+            ) : (
+              <>
+                <PenLine className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <span>{status === "success" ? "Regenerate" : "Improve Answer"}</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        {!isValid && disabledReason && (
+          <p
+            id="submit-disabled-reason"
+            className="text-[11px] text-ink-subtle text-right"
+          >
+            {disabledReason}
+          </p>
+        )}
+
+        {isValid && (
+          <p className="text-[11px] text-ink-subtle text-right">
+            Press <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Cmd</kbd> + <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Enter</kbd> to submit
+          </p>
+        )}
+      </div>
+    </InputPanel>
+  );
+
+  const customActions = (
+    <div className="inline-flex p-0.5 bg-[#EAE8E3] rounded border border-ink-border">
+      <button
+        type="button"
+        onClick={() => setViewMode("side-by-side")}
+        className={cn(
+          "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
+          viewMode === "side-by-side"
+            ? "bg-white text-ink font-medium shadow-sm"
+            : "text-ink-secondary hover:text-ink"
+        )}
+        title="Side-by-side comparison"
+      >
+        <Columns className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <span className="hidden sm:inline">Side by Side</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode("stacked")}
+        className={cn(
+          "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
+          viewMode === "stacked"
+            ? "bg-white text-ink font-medium shadow-sm"
+            : "text-ink-secondary hover:text-ink"
+        )}
+        title="Stacked comparison"
+      >
+        <LayoutGrid className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <span className="hidden sm:inline">Stacked</span>
+      </button>
+    </div>
+  );
+
+  const resultPanel = (
+    <ResultPanel
+      status={status}
+      error={error}
+      onRetry={() => handleGenerate()}
+      sections={IMPROVER_SECTIONS}
+      title="Answer Improvement"
+      badge={result?.subject_or_topic || null}
+      rawMarkdown={rawMarkdown}
+      filename="studymate-improved-answer.md"
+      actions={status === "success" ? customActions : null}
+    >
+      {result && (
+        <AnimatedGroup stagger={0.06} className="space-y-6">
+          {/* 1. Original Answer Feedback */}
+          <Card className="p-6 space-y-2">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              1. Original Answer Feedback
+            </h2>
+            <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
+              {result.original_answer_feedback}
+            </p>
+          </Card>
+
+          {/* 2. Improved Answer Comparison */}
+          <div className="space-y-2">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              2. Improved Answer
+            </h2>
+
+            {viewMode === "side-by-side" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                <Card className="p-5 space-y-2 bg-[#FCFBFA]">
+                  <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider block border-b border-ink-border pb-1.5">
+                    Original Draft
                   </span>
-                  <div>
-                    <strong className="text-ink block">Original Answer Feedback</strong>
-                    <span className="text-ink-secondary text-[11px]">
-                      A candid appraisal of clarity, argument structure, and academic precision.
-                    </span>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3 p-3 bg-white border border-ink-border rounded">
-                  <span className="w-5 h-5 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-[11px] shrink-0">
-                    2
-                  </span>
-                  <div>
-                    <strong className="text-ink block">Improved Answer</strong>
-                    <span className="text-ink-secondary text-[11px]">
-                      A polished revision retaining your original facts with elevated vocabulary and flow.
-                    </span>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3 p-3 bg-white border border-ink-border rounded">
-                  <span className="w-5 h-5 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-[11px] shrink-0">
-                    3
-                  </span>
-                  <div>
-                    <strong className="text-ink block">Key Improvements Made</strong>
-                    <span className="text-ink-secondary text-[11px]">
-                      Concrete explanations of phrasing substitutions and structural enhancements.
-                    </span>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3 p-3 bg-white border border-ink-border rounded">
-                  <span className="w-5 h-5 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-[11px] shrink-0">
-                    4
-                  </span>
-                  <div>
-                    <strong className="text-ink block">Suggestions for Further Improvement</strong>
-                    <span className="text-ink-secondary text-[11px]">
-                      Actionable recommendations for deepening your understanding and exam readiness.
-                    </span>
-                  </div>
-                </li>
-              </ol>
-            </Card>
-          )}
-
-          {/* Loading Skeleton mirroring 4 output sections */}
-          {status === "loading" && (
-            <div className="space-y-4" aria-busy="true" aria-live="polite">
-              <SkeletonBlock lines={3} className="p-6" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SkeletonBlock lines={5} className="p-6" />
-                <SkeletonBlock lines={5} className="p-6" />
-              </div>
-              <SkeletonBlock lines={4} className="p-6" />
-              <SkeletonBlock lines={3} className="p-6" />
-            </div>
-          )}
-
-          {/* Success State: Clean Document Layout */}
-          {status === "success" && result && (
-            <div className="space-y-6">
-              {/* Output Actions Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-ink-border">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-ink">
-                    Answer Analysis
-                  </span>
-                  {result.subject_or_topic && (
-                    <span className="text-[11px] text-ink-secondary bg-[#EAE8E3] px-2 py-0.5 rounded">
-                      {result.subject_or_topic}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex p-0.5 bg-[#EAE8E3] rounded border border-ink-border">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("side-by-side")}
-                      className={cn(
-                        "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
-                        viewMode === "side-by-side"
-                          ? "bg-white text-ink font-medium shadow-sm"
-                          : "text-ink-secondary hover:text-ink"
-                      )}
-                      title="Side-by-side comparison"
-                    >
-                      <Columns className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Side by Side</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("stacked")}
-                      className={cn(
-                        "px-2.5 py-1 text-xs rounded transition-colors flex items-center gap-1.5",
-                        viewMode === "stacked"
-                          ? "bg-white text-ink font-medium shadow-sm"
-                          : "text-ink-secondary hover:text-ink"
-                      )}
-                      title="Stacked comparison"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Stacked</span>
-                    </button>
-                  </div>
-
-                  <Button variant="secondary" size="sm" onClick={handleCopyImproved}>
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-feedback-success" />
-                        <span>Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Improved</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Staggered Sections Reveal */}
-              <AnimatedGroup stagger={0.08} className="space-y-6">
-                {/* 1. Original Answer Feedback */}
-                <Card className="p-6 space-y-2">
-                  <h2 className="font-serif text-lg font-medium text-ink">
-                    1. Original Answer Feedback
-                  </h2>
-                  <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
-                    {result.original_answer_feedback}
+                  <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
+                    {result.original_answer}
                   </p>
                 </Card>
 
-                {/* 2. Improved Answer Comparison */}
-                <div className="space-y-2">
-                  <h2 className="font-serif text-lg font-medium text-ink">
-                    2. Improved Answer
-                  </h2>
-
-                  {viewMode === "side-by-side" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                      {/* Original Answer */}
-                      <Card className="p-5 space-y-2 bg-[#FCFBFA]">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-ink-border">
-                          <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider">
-                            Original Answer
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
-                          {result.original_answer}
-                        </p>
-                      </Card>
-
-                      {/* Improved Answer with Subtle Highlights */}
-                      <Card className="p-5 space-y-2 bg-white border-brand/40">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-ink-border">
-                          <span className="text-[11px] font-semibold text-brand uppercase tracking-wider">
-                            Improved Answer
-                          </span>
-                        </div>
-                        <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                          <DiffHighlighter
-                            text={result.improved_answer}
-                            phrases={result.changed_phrases}
-                          />
-                        </div>
-                      </Card>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <Card className="p-5 space-y-2 bg-[#FCFBFA]">
-                        <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider">
-                          Original Answer
-                        </span>
-                        <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
-                          {result.original_answer}
-                        </p>
-                      </Card>
-
-                      <Card className="p-5 space-y-2 bg-white border-brand/40">
-                        <span className="text-[11px] font-semibold text-brand uppercase tracking-wider">
-                          Improved Answer
-                        </span>
-                        <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                          <DiffHighlighter
-                            text={result.improved_answer}
-                            phrases={result.changed_phrases}
-                          />
-                        </div>
-                      </Card>
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Key Improvements Made */}
-                <Card className="p-6 space-y-4">
-                  <div className="space-y-1">
-                    <h2 className="font-serif text-lg font-medium text-ink">
-                      3. Key Improvements Made
-                    </h2>
-                    <p className="text-xs text-ink-secondary">
-                      Specific adjustments made to structure, tone, and clarity.
-                    </p>
+                <Card className="p-5 space-y-2 bg-white border-brand/40">
+                  <span className="text-[11px] font-semibold text-brand uppercase tracking-wider block border-b border-ink-border pb-1.5">
+                    Improved Revision
+                  </span>
+                  <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
+                    <DiffHighlighter
+                      text={result.improved_answer}
+                      phrases={result.changed_phrases}
+                    />
                   </div>
-
-                  <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
-                    {result.key_improvements_made?.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Phrase Substitutions Table */}
-                  {result.changed_phrases?.length > 0 && (
-                    <div className="pt-3 border-t border-ink-border space-y-2">
-                      <span className="text-[11px] font-semibold text-ink uppercase tracking-wider">
-                        Phrase Substitutions
-                      </span>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="border-b border-ink-border text-ink-subtle">
-                              <th className="py-2 pr-3 font-semibold text-[10px] uppercase tracking-wider">Original Phrase</th>
-                              <th className="py-2 pr-3 font-semibold text-[10px] uppercase tracking-wider">Improved Substitution</th>
-                              <th className="py-2 font-semibold text-[10px] uppercase tracking-wider">Reason</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-ink-border/50">
-                            {result.changed_phrases.map((phrase, idx) => (
-                              <tr key={idx} className="hover:bg-black/[0.01]">
-                                <td className="py-2.5 pr-3 text-ink-secondary font-mono text-[11px]">
-                                  {phrase.original_phrase}
-                                </td>
-                                <td className="py-2.5 pr-3 text-brand font-medium font-mono text-[11px]">
-                                  <span className="bg-diff-bg px-1.5 py-0.5 rounded border border-diff-border inline-block">
-                                    {phrase.improved_phrase}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 text-ink-secondary text-[11px] leading-relaxed">
-                                  {phrase.reason}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                </Card>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Card className="p-5 space-y-2 bg-[#FCFBFA]">
+                  <span className="text-[11px] font-semibold text-ink-secondary uppercase tracking-wider">
+                    Original Draft
+                  </span>
+                  <p className="text-xs sm:text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed">
+                    {result.original_answer}
+                  </p>
                 </Card>
 
-                {/* 4. Suggestions for Further Improvement */}
-                <Card className="p-6 space-y-3">
-                  <h2 className="font-serif text-lg font-medium text-ink">
-                    4. Suggestions for Further Improvement
-                  </h2>
-                  <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
-                    {result.suggestions_for_further_improvement?.map((sugg, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5">
-                        <ArrowRight className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" />
-                        <span>{sugg}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <Card className="p-5 space-y-2 bg-white border-brand/40">
+                  <span className="text-[11px] font-semibold text-brand uppercase tracking-wider">
+                    Improved Revision
+                  </span>
+                  <div className="text-xs sm:text-sm text-ink whitespace-pre-wrap leading-relaxed">
+                    <DiffHighlighter
+                      text={result.improved_answer}
+                      phrases={result.changed_phrases}
+                    />
+                  </div>
                 </Card>
-              </AnimatedGroup>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Key Improvements Made */}
+          <Card className="p-6 space-y-4">
+            <div className="space-y-1">
+              <h2 className="font-serif text-lg font-medium text-ink">
+                3. Key Improvements Made
+              </h2>
+              <p className="text-xs text-ink-secondary">
+                Specific structural adjustments and phrasing substitutions.
+              </p>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+
+            <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
+              {result.key_improvements_made?.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Phrase Substitutions Table */}
+            {result.changed_phrases?.length > 0 && (
+              <div className="pt-3 border-t border-ink-border space-y-2">
+                <span className="text-[11px] font-semibold text-ink uppercase tracking-wider">
+                  Phrase Substitutions
+                </span>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-ink-border text-ink-subtle">
+                        <th className="py-2 pr-3 font-semibold text-[10px] uppercase tracking-wider">Original Phrase</th>
+                        <th className="py-2 pr-3 font-semibold text-[10px] uppercase tracking-wider">Improved Substitution</th>
+                        <th className="py-2 font-semibold text-[10px] uppercase tracking-wider">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ink-border/50">
+                      {result.changed_phrases.map((phrase, idx) => (
+                        <tr key={idx} className="hover:bg-black/[0.01]">
+                          <td className="py-2.5 pr-3 text-ink-secondary font-mono text-[11px]">
+                            {phrase.original_phrase}
+                          </td>
+                          <td className="py-2.5 pr-3 text-brand font-medium font-mono text-[11px]">
+                            <span className="bg-diff-bg px-1.5 py-0.5 rounded border border-diff-border inline-block">
+                              {phrase.improved_phrase}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-ink-secondary text-[11px] leading-relaxed">
+                            {phrase.reason}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* 4. Suggestions for Further Improvement */}
+          <Card className="p-6 space-y-3">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              4. Suggestions for Further Improvement
+            </h2>
+            <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
+              {result.suggestions_for_further_improvement?.map((sugg, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <ArrowRight className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" strokeWidth={1.75} />
+                  <span>{sugg}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </AnimatedGroup>
+      )}
+    </ResultPanel>
+  );
+
+  return (
+    <ToolLayout
+      title="Answer Improver"
+      description="Paste your draft response to get structural feedback, side-by-side wording refinements, and suggestions without introducing new facts."
+      inputPanel={inputPanel}
+      resultPanel={resultPanel}
+    />
   );
 }

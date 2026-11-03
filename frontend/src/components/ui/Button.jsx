@@ -24,6 +24,8 @@ export const Button = forwardRef(
         "bg-white text-ink border border-ink-border hover:border-ink-border-hover hover:bg-black/[0.01] active:bg-black/[0.03]",
       subtle:
         "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08]",
+      ghost:
+        "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08]",
       danger:
         "bg-feedback-error text-white hover:bg-[#9B1C1C] active:bg-[#771515]",
     };
