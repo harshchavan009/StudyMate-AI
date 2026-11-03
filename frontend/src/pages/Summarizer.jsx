@@ -7,8 +7,10 @@ import { FieldCounter } from "@/components/ui/FieldCounter";
 import { ToolLayout } from "@/components/layout/ToolLayout";
 import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
+import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { usePageMeta } from "@/lib/usePageMeta";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,15 @@ const SUMMARIZER_SECTIONS = [
   { title: "Quick Revision Summary", description: "High-yield synopsis for fast review before an exam or lecture." },
 ];
 
+const MINI_NAV_SECTIONS = [
+  { id: "summary-sec-1", title: "Topic Overview" },
+  { id: "summary-sec-2", title: "Key Concepts" },
+  { id: "summary-sec-3", title: "Definitions" },
+  { id: "summary-sec-4", title: "Important Points" },
+  { id: "summary-sec-5", title: "Exam Notes" },
+  { id: "summary-sec-6", title: "Quick Revision" },
+];
+
 export function Summarizer() {
   usePageMeta(
     "Summarizer",
@@ -33,12 +44,15 @@ export function Summarizer() {
   );
 
   const location = useLocation();
+  const isOnline = useOnlineStatus();
   const [text, setText] = useState("");
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [limits, setLimits] = useState({ min: 20, max: 10000 });
   const draftTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const resultHeadingRef = useRef(null);
 
   // Restore from navigation state or local draft
   useEffect(() => {
@@ -83,11 +97,13 @@ export function Summarizer() {
   const charCount = text.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
-  const isValid = charCount >= limits.min && charCount <= limits.max;
+  const isValid = isOnline && charCount >= limits.min && charCount <= limits.max;
 
-  // Disabled reason for submit button (A7)
+  // Disabled reason for submit button (A7 / C6)
   let disabledReason = "";
-  if (status === "loading") {
+  if (!isOnline) {
+    disabledReason = "You are currently offline. Check your network connection.";
+  } else if (status === "loading") {
     disabledReason = "Generating summary, please wait...";
   } else if (charCount === 0) {
     disabledReason = `Enter at least ${limits.min} characters to generate a summary.`;
@@ -101,11 +117,14 @@ export function Summarizer() {
     if (e) e.preventDefault();
     if (!isValid || status === "loading") return;
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStatus("loading");
     setError(null);
 
     try {
-      const data = await api.summarize(text.trim());
+      const data = await api.summarize(text.trim(), { signal: controller.signal });
       setResult(data);
       setStatus("success");
       saveRecentSession({
@@ -115,9 +134,27 @@ export function Summarizer() {
         input: text,
         result: data,
       });
+
+      // Move focus to result heading after generation (C11)
+      setTimeout(() => {
+        resultHeadingRef.current?.focus();
+      }, 100);
     } catch (err) {
-      setError(err.message || "Failed to generate summary. Please try again.");
-      setStatus("error");
+      if (err.name === "AbortError" || err.message === "Request was cancelled.") {
+        setStatus(result ? "success" : "empty");
+      } else {
+        setError(err.message || "Failed to generate summary. Please try again.");
+        setStatus("error");
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   };
 
@@ -185,8 +222,8 @@ export function Summarizer() {
         />
       </div>
 
-      {/* Action Buttons & Disabled Reason */}
-      <div className="pt-2 border-t border-ink-border space-y-2">
+      {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
+      <div className="pt-2 border-t border-ink-border space-y-2 sticky bottom-16 sm:static bg-white/95 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none -mx-4 px-4 py-2 sm:mx-0 sm:px-0 sm:py-0 z-10">
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
@@ -243,17 +280,23 @@ export function Summarizer() {
       status={status}
       error={error}
       onRetry={() => handleGenerate()}
+      onStop={handleStop}
       sections={SUMMARIZER_SECTIONS}
       title="Academic Summary"
       badge="6 sections"
       rawMarkdown={result?.raw_markdown}
       filename="studymate-summary.md"
+      miniNav={<SectionMiniNav sections={MINI_NAV_SECTIONS} />}
     >
       {result && (
         <AnimatedGroup stagger={0.06} className="space-y-6">
           {/* 1. Topic Overview */}
-          <Card className="p-6 space-y-2">
-            <h2 className="font-serif text-lg font-medium text-ink">
+          <Card id="summary-sec-1" className="p-6 space-y-2">
+            <h2
+              ref={resultHeadingRef}
+              tabIndex={-1}
+              className="font-serif text-lg font-medium text-ink focus:outline-none"
+            >
               1. Topic Overview
             </h2>
             <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
@@ -262,7 +305,7 @@ export function Summarizer() {
           </Card>
 
           {/* 2. Key Concepts */}
-          <Card className="p-6 space-y-3">
+          <Card id="summary-sec-2" className="p-6 space-y-3">
             <h2 className="font-serif text-lg font-medium text-ink">
               2. Key Concepts
             </h2>
@@ -277,7 +320,7 @@ export function Summarizer() {
           </Card>
 
           {/* 3. Important Definitions */}
-          <Card className="p-6 space-y-3">
+          <Card id="summary-sec-3" className="p-6 space-y-3">
             <h2 className="font-serif text-lg font-medium text-ink">
               3. Important Definitions
             </h2>
@@ -296,7 +339,7 @@ export function Summarizer() {
           </Card>
 
           {/* 4. Important Points */}
-          <Card className="p-6 space-y-3">
+          <Card id="summary-sec-4" className="p-6 space-y-3">
             <h2 className="font-serif text-lg font-medium text-ink">
               4. Important Points
             </h2>
@@ -311,7 +354,7 @@ export function Summarizer() {
           </Card>
 
           {/* 5. Exam Preparation Notes */}
-          <Card className="p-6 space-y-3 bg-[#FCFBFA]">
+          <Card id="summary-sec-5" className="p-6 space-y-3 bg-[#FCFBFA]">
             <h2 className="font-serif text-lg font-medium text-ink">
               5. Exam Preparation Notes
             </h2>
@@ -326,7 +369,7 @@ export function Summarizer() {
           </Card>
 
           {/* 6. Quick Revision Summary */}
-          <Card className="p-6 space-y-2">
+          <Card id="summary-sec-6" className="p-6 space-y-2">
             <h2 className="font-serif text-lg font-medium text-ink">
               6. Quick Revision Summary
             </h2>
