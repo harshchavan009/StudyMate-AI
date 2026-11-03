@@ -7,7 +7,7 @@ export function InputPanel({
   className,
 }) {
   return (
-    <Card className={cn("p-5 sm:p-6 space-y-4", className)}>
+    <Card className={cn("p-6 space-y-4 bg-surface border border-ink-border rounded-panel", className)}>
       <form onSubmit={onSubmit} className="space-y-4">
         {children}
       </form>

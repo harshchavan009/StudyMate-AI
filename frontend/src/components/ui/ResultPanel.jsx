@@ -92,13 +92,6 @@ export function ResultPanel({
 
   return (
     <div className="space-y-4">
-      {/* Screen Reader Aria-Live Announcement Region (C1) */}
-      <div className="sr-only" aria-live="polite" role="status">
-        {copied ? "Formatted markdown copied to clipboard." : ""}
-        {status === "loading" ? "Document is generating..." : ""}
-        {status === "success" ? `${title} generated successfully.` : ""}
-      </div>
-
       {/* Error Banner with Retry */}
       {status === "error" && (
         <Alert
@@ -128,7 +121,7 @@ export function ResultPanel({
 
       {/* Empty State: What you will get */}
       {(status === "empty" || status === "initial") && (
-        <Card className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel">
+        <Card className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel">
           <div className="space-y-1 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
               <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
@@ -169,7 +162,7 @@ export function ResultPanel({
       {/* Loading State: Skeletons, Stop button (C4), and Waking Server Notice (C5) */}
       {status === "loading" && (
         <Card
-          className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel"
+          className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel"
           aria-busy="true"
           aria-live="polite"
         >
@@ -340,6 +333,13 @@ export function ResultPanel({
           </div>
         </div>
       )}
+
+      {/* Screen Reader Aria-Live Announcement Region (C1) */}
+      <div className="sr-only" aria-live="polite" role="status">
+        {copied ? "Formatted markdown copied to clipboard." : ""}
+        {status === "loading" ? "Document is generating..." : ""}
+        {status === "success" ? `${title} generated successfully.` : ""}
+      </div>
     </div>
   );
 }

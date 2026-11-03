@@ -23,13 +23,13 @@ export function ToolLayout({
 
       {/* Split view at 1280px and wider, stacked below */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Input and Settings */}
-        <div className="xl:col-span-5 space-y-4">
+        {/* Left Column: Input and Settings (sticky on wide screens - E4) */}
+        <div className="xl:col-span-5 space-y-4 xl:sticky xl:top-[72px] self-start">
           {inputPanel}
         </div>
 
         {/* Right Column: Results & Documents */}
-        <div className="xl:col-span-7 space-y-4">
+        <div className="xl:col-span-7 space-y-4 min-w-0">
           {resultPanel}
         </div>
       </div>
