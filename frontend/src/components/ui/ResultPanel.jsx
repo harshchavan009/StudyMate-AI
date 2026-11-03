@@ -175,7 +175,7 @@ export function ResultPanel({
         >
           <div className="space-y-3 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-brand font-medium">
+              <span className="text-xs font-sans tracking-[0.04em] text-brand font-medium">
                 Generating Document...
               </span>
 
@@ -213,7 +213,7 @@ export function ResultPanel({
             {sections.map((section, idx) => (
               <div key={idx} className="space-y-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-mono text-brand font-medium">
+                  <span className="text-xs font-sans tabular-nums text-brand font-medium">
                     0{idx + 1}.
                   </span>
                   <h4 className="font-serif text-sm font-medium text-ink">
@@ -258,7 +258,7 @@ export function ResultPanel({
                     type="button"
                     onClick={() => handleTextSizeChange(sz.id)}
                     className={cn(
-                      "w-6 h-6 flex items-center justify-center text-[11px] font-mono rounded transition-colors",
+                      "w-6 h-6 flex items-center justify-center text-xs font-sans font-medium rounded transition-colors",
                       textSize === sz.id
                         ? "bg-white text-ink font-semibold shadow-sm"
                         : "text-ink-secondary hover:text-ink"

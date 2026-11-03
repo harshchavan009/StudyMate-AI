@@ -197,7 +197,7 @@ export function Home() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
             01
           </div>
           <h3 className="text-sm font-semibold text-ink">
@@ -209,7 +209,7 @@ export function Home() {
         </div>
 
         <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
             02
           </div>
           <h3 className="text-sm font-semibold text-ink">
@@ -221,7 +221,7 @@ export function Home() {
         </div>
 
         <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-mono">
+          <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
             03
           </div>
           <h3 className="text-sm font-semibold text-ink">
@@ -297,7 +297,7 @@ export function Home() {
               className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
             >
               <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
-                <span className="font-mono text-sm text-ink-subtle shrink-0">
+                <span className="font-sans tabular-nums text-sm text-ink-subtle shrink-0">
                   {tool.num}
                 </span>
                 <div className="space-y-1">

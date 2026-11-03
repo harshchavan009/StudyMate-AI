@@ -316,7 +316,7 @@ export function AnswerImprover() {
 
         {isValid && (
           <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Cmd</kbd> + <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Enter</kbd> to submit
+            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>
@@ -411,7 +411,7 @@ export function AnswerImprover() {
               <h2 className="font-serif text-lg font-medium text-ink">
                 2. Improved Answer
               </h2>
-              <span className="text-[11px] font-mono text-ink-subtle uppercase">
+              <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
                 View: {viewMode}
               </span>
             </div>
@@ -461,15 +461,15 @@ export function AnswerImprover() {
                     <tbody className="divide-y divide-ink-border/50">
                       {result.changed_phrases.map((phrase, idx) => (
                         <tr key={idx} className="hover:bg-black/[0.01]">
-                          <td className="py-2.5 pr-3 text-ink-secondary font-mono text-[11px]">
+                          <td className="py-2.5 pr-3 text-ink-secondary text-xs">
                             {phrase.original_phrase}
                           </td>
-                          <td className="py-2.5 pr-3 text-brand font-medium font-mono text-[11px]">
+                          <td className="py-2.5 pr-3 text-brand font-medium text-xs">
                             <span className="bg-diff-bg px-1.5 py-0.5 rounded border border-diff-border inline-block">
                               {phrase.improved_phrase}
                             </span>
                           </td>
-                          <td className="py-2.5 text-ink-secondary text-[11px] leading-relaxed">
+                          <td className="py-2.5 text-ink-secondary text-xs leading-relaxed">
                             {phrase.reason}
                           </td>
                         </tr>

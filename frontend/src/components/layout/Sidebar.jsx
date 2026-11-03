@@ -165,7 +165,7 @@ export function Sidebar({ collapsed = false, drawerOpen = false, onClose = null 
         {/* Bottom of Sidebar: 3 Most Recent Sessions from Real History (B3) */}
         {(!collapsed || drawerOpen) && recentSessions.length > 0 && (
           <div className="p-3 border-t border-ink-border space-y-2 mt-auto shrink-0 bg-white">
-            <div className="px-1 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-ink-subtle">
+            <div className="px-1 flex items-center justify-between text-xs font-sans tracking-[0.04em] text-ink-subtle">
               <span>Recent</span>
               <Clock className="w-3 h-3" strokeWidth={1.75} />
             </div>

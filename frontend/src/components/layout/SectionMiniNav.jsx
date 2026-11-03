@@ -55,7 +55,7 @@ export function SectionMiniNav({ sections = [], className = "" }) {
         className
       )}
     >
-      <span className="text-[10px] font-mono uppercase tracking-wider text-ink-subtle font-medium block pb-1 border-b border-ink-border">
+      <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle font-medium block pb-1 border-b border-ink-border">
         Contents
       </span>
 
@@ -74,7 +74,7 @@ export function SectionMiniNav({ sections = [], className = "" }) {
                     : "text-ink-secondary hover:text-ink hover:bg-black/5"
                 )}
               >
-                <span className="font-mono text-[10px] opacity-75 shrink-0">
+                <span className="font-sans tabular-nums text-xs opacity-75 shrink-0">
                   0{idx + 1}.
                 </span>
                 <span className="truncate">{sec.title}</span>

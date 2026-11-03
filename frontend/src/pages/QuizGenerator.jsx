@@ -473,7 +473,7 @@ export function QuizGenerator() {
 
         {isValid && (
           <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Cmd</kbd> + <kbd className="px-1 py-0.5 bg-[#EAE8E3] rounded text-[10px] font-mono">Enter</kbd> to submit
+            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>
@@ -579,7 +579,7 @@ export function QuizGenerator() {
                         )}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-[11px] font-mono font-medium text-ink shrink-0">
+                          <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-xs font-sans font-semibold text-ink shrink-0">
                             {String.fromCharCode(65 + optIdx)}
                           </span>
                           <span className="leading-relaxed">{option}</span>
@@ -669,7 +669,7 @@ export function QuizGenerator() {
 
             {/* Clickable Progress Review Strip (M4) */}
             <div className="pt-2 max-w-md mx-auto">
-              <span className="text-[11px] font-mono text-ink-subtle block mb-1.5">
+              <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle block mb-1.5">
                 Click a question to view review details
               </span>
               <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-15 gap-1.5 w-full">
@@ -680,7 +680,7 @@ export function QuizGenerator() {
                       key={idx}
                       href={`#review-q-${idx + 1}`}
                       className={cn(
-                        "h-6 rounded flex items-center justify-center text-[10px] font-mono font-medium transition-transform hover:scale-105",
+                        "h-6 rounded flex items-center justify-center text-xs font-sans tabular-nums font-medium transition-transform hover:scale-105",
                         isCorrect
                           ? "bg-feedback-success text-white"
                           : "bg-feedback-error text-white"
@@ -733,7 +733,7 @@ export function QuizGenerator() {
                 <Card id={`review-q-${idx + 1}`} key={idx} className="p-5 space-y-3 scroll-mt-20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-[11px] font-mono font-medium text-ink shrink-0 mt-0.5">
+                      <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-xs font-sans tabular-nums font-medium text-ink shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
                       <p className="text-xs sm:text-sm font-medium text-ink leading-snug">

@@ -43,10 +43,10 @@ export function DiffHighlighter({
       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", className)}>
         <div className="p-4 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-2">
           <div className="flex items-center justify-between pb-2 border-b border-ink-border">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle font-medium">
+            <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle font-medium">
               Original Draft
             </span>
-            <span className="text-[11px] text-ink-subtle">
+            <span className="text-xs text-ink-subtle">
               {original.length} chars
             </span>
           </div>
@@ -57,10 +57,10 @@ export function DiffHighlighter({
 
         <div className="p-4 bg-white border border-brand/20 rounded-panel space-y-2 shadow-sm">
           <div className="flex items-center justify-between pb-2 border-b border-brand/20">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-brand font-medium">
+            <span className="text-xs font-sans tracking-[0.04em] text-brand font-medium">
               Polished Revision
             </span>
-            <span className="text-[11px] text-ink-subtle">
+            <span className="text-xs text-ink-subtle">
               {improved.length} chars
             </span>
           </div>

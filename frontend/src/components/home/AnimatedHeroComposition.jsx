@@ -188,7 +188,7 @@ export function AnimatedHeroComposition() {
                     color: isRaw ? "#5B6070" : "#FFFFFF",
                   }}
                   transition={{ duration: 0.3 }}
-                  className="w-4 h-4 flex items-center justify-center text-[10px] font-mono font-semibold rounded shrink-0"
+                  className="w-4 h-4 flex items-center justify-center text-xs font-sans tabular-nums font-semibold rounded shrink-0"
                 >
                   {secIdx + 1}
                 </motion.span>
