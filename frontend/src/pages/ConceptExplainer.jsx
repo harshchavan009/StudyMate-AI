@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Lightbulb, RefreshCw, RotateCcw, ArrowRight } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -9,9 +10,10 @@ import { FieldCounter } from "@/components/ui/FieldCounter";
 import { ToolLayout } from "@/components/layout/ToolLayout";
 import { InputPanel } from "@/components/ui/InputPanel";
 import { ResultPanel } from "@/components/ui/ResultPanel";
-import { TransitionPanel } from "@/components/motion/TransitionPanel";
+import { SectionMiniNav } from "@/components/layout/SectionMiniNav";
 import { AnimatedGroup } from "@/components/motion/AnimatedGroup";
 import { usePageMeta } from "@/lib/usePageMeta";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -35,10 +37,10 @@ const LEVEL_OPTIONS = [
   { label: "Advanced", value: "advanced" },
 ];
 
-const LEVEL_INDEX_MAP = {
-  beginner: 0,
-  intermediate: 1,
-  advanced: 2,
+const LEVEL_BAR_COUNT = {
+  beginner: 1,
+  intermediate: 2,
+  advanced: 3,
 };
 
 const SAMPLE_CONCEPT = "TCP Three-Way Handshake";
@@ -53,6 +55,46 @@ const EXPLAINER_SECTIONS = [
   { title: "Quick Revision Points", description: "High-yield summary bullets for rapid recall before exams." },
 ];
 
+const EXPLAINER_MINI_NAV_SECTIONS = [
+  { id: "explainer-sec-1", title: "Introduction" },
+  { id: "explainer-sec-2", title: "Detailed Explanation" },
+  { id: "explainer-sec-3", title: "Step-by-Step" },
+  { id: "explainer-sec-4", title: "Practical Example" },
+  { id: "explainer-sec-5", title: "Real-World Apps" },
+  { id: "explainer-sec-6", title: "Quick Revision" },
+];
+
+/**
+ * Three-bar depth indicator beside title that transitions with level over 200ms (M6).
+ */
+function DepthIndicator({ level = "intermediate" }) {
+  const activeCount = LEVEL_BAR_COUNT[level] || 2;
+
+  return (
+    <div
+      className="inline-flex items-end gap-1 h-4 px-1"
+      title={`Depth: ${level} (${activeCount} of 3 bars)`}
+      aria-label={`Depth level ${level}`}
+    >
+      {[1, 2, 3].map((bar) => {
+        const isActive = bar <= activeCount;
+        return (
+          <div
+            key={bar}
+            className={cn(
+              "w-1 rounded-sm transition-colors duration-200",
+              bar === 1 && "h-2",
+              bar === 2 && "h-3",
+              bar === 3 && "h-4",
+              isActive ? "bg-brand" : "bg-[#D5D8E2]"
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function ConceptExplainer() {
   usePageMeta(
     "Concept Explainer",
@@ -60,14 +102,18 @@ export function ConceptExplainer() {
   );
 
   const location = useLocation();
+  const isOnline = useOnlineStatus();
+  const shouldReduceMotion = useReducedMotion();
   const [concept, setConcept] = useState("");
   const [subject, setSubject] = useState("Not specified");
   const [selectedLevel, setSelectedLevel] = useState("intermediate");
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
-  const [explainerCache, setExplainerCache] = useState({}); // { [level]: ExplainConceptResponse }
+  const [explainerCache, setExplainerCache] = useState({}); // { [level]: ExplainConceptResponse } (C8)
   const [limits, setLimits] = useState({ min: 3, max: 300 });
   const draftTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const resultHeadingRef = useRef(null);
 
   // Restore session from navigation or draft
   useEffect(() => {
@@ -105,7 +151,7 @@ export function ConceptExplainer() {
       .catch(() => {});
   }, []);
 
-  // Debounced autosave draft (500ms)
+  // Debounced autosave draft (500ms) (C3)
   const saveCurrentDraft = (newConcept, newSubject, newLevel) => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
@@ -136,11 +182,13 @@ export function ConceptExplainer() {
   const charCount = concept.length;
   const isTooShort = charCount > 0 && charCount < limits.min;
   const isTooLong = charCount > limits.max;
-  const isValid = charCount >= limits.min && charCount <= limits.max;
+  const isValid = isOnline && charCount >= limits.min && charCount <= limits.max;
 
-  // Disabled reason for submit button (A7)
+  // Disabled reason for submit button (A7 / C6)
   let disabledReason = "";
-  if (status === "loading") {
+  if (!isOnline) {
+    disabledReason = "You are currently offline. Check your network connection.";
+  } else if (status === "loading") {
     disabledReason = "Synthesizing concept breakdown, please wait...";
   } else if (charCount === 0) {
     disabledReason = `Enter a concept or theory (${limits.min} to ${limits.max} characters).`;
@@ -158,13 +206,21 @@ export function ConceptExplainer() {
       return;
     }
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStatus("loading");
     setError(null);
 
     const apiSubject = subject === "Not specified" ? "Other" : subject;
 
     try {
-      const data = await api.explainConcept(concept.trim(), targetLevel, apiSubject);
+      const data = await api.explainConcept(
+        concept.trim(),
+        targetLevel,
+        apiSubject,
+        { signal: controller.signal }
+      );
       setExplainerCache((prev) => ({
         ...prev,
         [targetLevel]: data,
@@ -178,9 +234,27 @@ export function ConceptExplainer() {
         input: concept,
         result: data,
       });
+
+      // Move focus to result heading after generation (C11)
+      setTimeout(() => {
+        resultHeadingRef.current?.focus();
+      }, 100);
     } catch (err) {
-      setError(err.message || "Failed to generate concept explanation. Please try again.");
-      setStatus("error");
+      if (err.name === "AbortError" || err.message === "Request was cancelled.") {
+        setStatus(explainerCache[targetLevel] ? "success" : "empty");
+      } else {
+        setError(err.message || "Failed to generate concept explanation. Please try again.");
+        setStatus("error");
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   };
 
@@ -189,12 +263,11 @@ export function ConceptExplainer() {
     fetchExplanation(selectedLevel, true);
   };
 
+  // C8: Switching level shows cached result instantly, or an empty sheet with a "Generate this level" button.
+  // Never silently discard a result.
   const handleLevelChange = (newLevel) => {
     setSelectedLevel(newLevel);
     saveCurrentDraft(concept, subject, newLevel);
-    if (status === "success" && isValid) {
-      fetchExplanation(newLevel, false);
-    }
   };
 
   const handleKeyDown = (e) => {
@@ -228,6 +301,7 @@ export function ConceptExplainer() {
   };
 
   const currentResult = explainerCache[selectedLevel];
+  const hasAnyCached = Object.keys(explainerCache).length > 0;
 
   const inputPanel = (
     <InputPanel onSubmit={handleGenerate}>
@@ -285,9 +359,12 @@ export function ConceptExplainer() {
 
       {/* Explanation Depth Segmented Control */}
       <div className="space-y-1.5">
-        <span className="text-xs font-semibold text-ink block">
-          Explanation Depth Level
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-ink block">
+            Explanation Depth Level
+          </span>
+          <DepthIndicator level={selectedLevel} />
+        </div>
         <SegmentedControl
           options={LEVEL_OPTIONS}
           value={selectedLevel}
@@ -296,8 +373,8 @@ export function ConceptExplainer() {
         />
       </div>
 
-      {/* Action Buttons & Disabled Reason */}
-      <div className="pt-2 border-t border-ink-border space-y-2">
+      {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
+      <div className="pt-2 border-t border-ink-border space-y-2 sticky bottom-16 sm:static bg-white/95 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none -mx-4 px-4 py-2 sm:mx-0 sm:px-0 sm:py-0 z-10">
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
@@ -325,7 +402,7 @@ export function ConceptExplainer() {
             ) : (
               <>
                 <Lightbulb className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>{status === "success" ? "Regenerate" : "Explain Concept"}</span>
+                <span>{currentResult ? "Regenerate" : "Explain Concept"}</span>
               </>
             )}
           </Button>
@@ -351,119 +428,160 @@ export function ConceptExplainer() {
 
   const resultPanel = (
     <ResultPanel
-      status={status}
+      status={status === "loading" ? "loading" : currentResult ? "success" : hasAnyCached ? "empty" : status}
       error={error}
       onRetry={() => fetchExplanation(selectedLevel, true)}
+      onStop={handleStop}
       sections={EXPLAINER_SECTIONS}
       title={currentResult ? currentResult.concept : "Concept Explanation"}
-      badge={currentResult ? `${currentResult.level} (${currentResult.subject})` : null}
+      badge={
+        currentResult ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span>{currentResult.level}</span>
+            <DepthIndicator level={currentResult.level} />
+          </span>
+        ) : null
+      }
       rawMarkdown={currentResult?.raw_markdown}
       filename="studymate-concept.md"
+      miniNav={<SectionMiniNav sections={EXPLAINER_MINI_NAV_SECTIONS} />}
     >
-      {/* Level TransitionPanel crossfade */}
-      <TransitionPanel activeIndex={LEVEL_INDEX_MAP[selectedLevel] || 0}>
-        {["beginner", "intermediate", "advanced"].map((lvl) => {
-          const res = explainerCache[lvl];
-          if (!res) return <div key={lvl} />;
+      {/* If current level is not yet generated but other levels are in cache (C8) */}
+      {!currentResult && hasAnyCached && (
+        <Card className="p-8 text-center space-y-4 border border-dashed border-ink-border rounded-panel bg-[#FCFBFA]">
+          <div className="max-w-md mx-auto space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <h3 className="font-serif text-lg font-medium text-ink">
+                {concept}
+              </h3>
+              <DepthIndicator level={selectedLevel} />
+            </div>
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              The <strong>{selectedLevel}</strong> depth level is not yet generated for this concept. Click below to generate it while retaining your existing explanations in memory.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => fetchExplanation(selectedLevel, true)}
+            disabled={!isValid || status === "loading"}
+          >
+            <Lightbulb className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span className="capitalize">Generate {selectedLevel} Level</span>
+          </Button>
+        </Card>
+      )}
 
-          return (
-            <AnimatedGroup key={lvl} stagger={0.06} className="space-y-6">
-              {/* 1. Introduction */}
-              <Card className="p-6 space-y-2">
-                <h2 className="font-serif text-lg font-medium text-ink">
-                  1. Introduction
-                </h2>
-                <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
-                  {res.introduction}
-                </p>
-              </Card>
+      {currentResult && (
+        <AnimatedGroup stagger={0.06} className="space-y-6">
+          {/* 1. Introduction */}
+          <Card id="explainer-sec-1" className="p-6 space-y-2">
+            <h2
+              ref={resultHeadingRef}
+              tabIndex={-1}
+              className="font-serif text-lg font-medium text-ink focus:outline-none"
+            >
+              1. Introduction
+            </h2>
+            <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
+              {currentResult.introduction}
+            </p>
+          </Card>
 
-              {/* 2. Detailed Explanation */}
-              <Card className="p-6 space-y-2">
-                <h2 className="font-serif text-lg font-medium text-ink">
-                  2. Detailed Explanation
-                </h2>
-                <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
-                  {res.detailed_explanation}
-                </p>
-              </Card>
+          {/* 2. Detailed Explanation */}
+          <Card id="explainer-sec-2" className="p-6 space-y-2">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              2. Detailed Explanation
+            </h2>
+            <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-prose">
+              {currentResult.detailed_explanation}
+            </p>
+          </Card>
 
-              {/* 3. Step-by-Step Understanding */}
-              <Card className="p-6 space-y-4">
-                <div className="space-y-1">
-                  <h2 className="font-serif text-lg font-medium text-ink">
-                    3. Step-by-Step Understanding
-                  </h2>
-                  <p className="text-xs text-ink-secondary">
-                    Logical progression through the key phases of this concept.
-                  </p>
+          {/* 3. Step-by-Step Understanding with Connector Line (M6) */}
+          <Card id="explainer-sec-3" className="p-6 space-y-4">
+            <div className="space-y-1">
+              <h2 className="font-serif text-lg font-medium text-ink">
+                3. Step-by-Step Understanding
+              </h2>
+              <p className="text-xs text-ink-secondary">
+                Logical progression through the key phases of this concept.
+              </p>
+            </div>
+
+            <div className="relative space-y-4 pt-1">
+              {/* Vertical connector line drawing down beside steps (M6) */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { scaleY: 0 }}
+                animate={{ scaleY: 1 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="absolute left-[11px] top-3 bottom-3 w-0.5 bg-brand/25 origin-top"
+                aria-hidden="true"
+              />
+
+              {currentResult.step_by_step_understanding?.map((step) => (
+                <div
+                  key={step.step_number}
+                  className="relative flex items-start gap-3.5"
+                >
+                  <span className="w-6 h-6 flex items-center justify-center bg-brand text-white text-[11px] font-semibold rounded-full shrink-0 z-10 shadow-sm mt-0.5">
+                    {step.step_number}
+                  </span>
+                  <div className="flex-1 p-3.5 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-1">
+                    <h3 className="text-xs sm:text-sm font-semibold text-ink">
+                      {step.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </Card>
 
-                <div className="space-y-3">
-                  {res.step_by_step_understanding?.map((step) => (
-                    <div
-                      key={step.step_number}
-                      className="p-3.5 bg-[#FCFBFA] border border-ink-border rounded space-y-1"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 flex items-center justify-center bg-brand text-white text-[11px] font-semibold rounded shrink-0">
-                          {step.step_number}
-                        </span>
-                        <h3 className="text-xs sm:text-sm font-semibold text-ink">
-                          {step.title}
-                        </h3>
-                      </div>
-                      <p className="text-xs sm:text-sm text-ink-secondary pl-7 leading-relaxed">
-                        {step.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+          {/* 4. Practical Example */}
+          <Card id="explainer-sec-4" className="p-6 space-y-2 bg-[#FCFBFA]">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              4. Practical Example
+            </h2>
+            <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose whitespace-pre-wrap">
+              {currentResult.practical_example}
+            </p>
+          </Card>
 
-              {/* 4. Practical Example */}
-              <Card className="p-6 space-y-2 bg-[#FCFBFA]">
-                <h2 className="font-serif text-lg font-medium text-ink">
-                  4. Practical Example
-                </h2>
-                <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose whitespace-pre-wrap">
-                  {res.practical_example}
-                </p>
-              </Card>
+          {/* 5. Real-World Applications */}
+          <Card id="explainer-sec-5" className="p-6 space-y-3">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              5. Real-World Applications
+            </h2>
+            <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
+              {currentResult.real_world_applications?.map((app, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
+                  <span>{app}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
-              {/* 5. Real-World Applications */}
-              <Card className="p-6 space-y-3">
-                <h2 className="font-serif text-lg font-medium text-ink">
-                  5. Real-World Applications
-                </h2>
-                <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
-                  {res.real_world_applications?.map((app, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
-                      <span>{app}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-
-              {/* 6. Quick Revision Points */}
-              <Card className="p-6 space-y-3 bg-[#FCFBFA]">
-                <h2 className="font-serif text-lg font-medium text-ink">
-                  6. Quick Revision Points
-                </h2>
-                <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
-                  {res.quick_revision_points?.map((pt, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5">
-                      <ArrowRight className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" strokeWidth={1.75} />
-                      <span>{pt}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            </AnimatedGroup>
-          );
-        })}
-      </TransitionPanel>
+          {/* 6. Quick Revision Points */}
+          <Card id="explainer-sec-6" className="p-6 space-y-3 bg-[#FCFBFA]">
+            <h2 className="font-serif text-lg font-medium text-ink">
+              6. Quick Revision Points
+            </h2>
+            <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
+              {currentResult.quick_revision_points?.map((pt, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <ArrowRight className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" strokeWidth={1.75} />
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </AnimatedGroup>
+      )}
     </ResultPanel>
   );
 
