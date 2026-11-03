@@ -11,13 +11,17 @@ const MOBILE_NAV_ITEMS = [
   { path: "/concept-explainer", label: "Explainer", icon: Lightbulb },
 ];
 
+/**
+ * MobileNav: Bottom navigation bar for mobile and tablet viewports below 1024px.
+ * Features 44px minimum touch targets (C11).
+ */
 export function MobileNav() {
   const location = useLocation();
 
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-ink-border px-2 z-40 flex items-center justify-around shadow-sm"
+      className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-ink-border px-2 z-40 flex items-center justify-around shadow-sm"
     >
       <AnimatedBackground
         defaultValue={location.pathname}
@@ -34,8 +38,8 @@ export function MobileNav() {
               data-id={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center py-1 px-2.5 rounded-md transition-colors",
-                isActive ? "text-brand font-semibold" : "text-ink-secondary"
+                "flex flex-col items-center justify-center min-h-[44px] min-w-[48px] py-1 px-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                isActive ? "text-brand font-semibold" : "text-ink-secondary hover:text-ink"
               )}
             >
               <Icon className="w-4 h-4 mb-0.5" strokeWidth={1.75} />
