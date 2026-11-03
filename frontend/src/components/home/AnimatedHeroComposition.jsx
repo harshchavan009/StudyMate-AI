@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { motion, useReducedMotion, AnimatePresence } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import exampleData from "@/data/exampleSummary.json";
+import { ProgressiveBlur } from "@/components/motion/ProgressiveBlur";
 import { cn } from "@/lib/utils";
 
 /**
@@ -158,28 +159,29 @@ export function AnimatedHeroComposition() {
       </div>
 
       {/* Animated Document Preview (M1) */}
-      <div className="space-y-3.5 text-xs">
-        {/* Render the 6 Structured Section Blocks */}
-        {SECTIONS_CONFIG.map((sec, secIdx) => {
-          // In raw mode, hide blocks 3-6 to focus on first sections or show raw layout
-          if (!showAllSections && secIdx >= 2 && animationStep === "final") {
-            return null;
-          }
-
-          return (
-            <motion.div
-              key={sec.num}
-              layout
-              initial={false}
-              animate={{
-                opacity: 1,
-                y: 0,
-                borderColor: isRaw ? "rgba(22, 24, 29, 0.08)" : "rgba(22, 24, 29, 0.12)",
-                backgroundColor: isRaw ? "#FAF9F6" : "#FFFFFF",
-              }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              className="p-3.5 border rounded space-y-2 transition-colors"
-            >
+      <div className="relative">
+        <div
+          className={cn(
+            "space-y-3.5 text-xs transition-all duration-300",
+            !showAllSections && animationStep === "final" ? "max-h-[520px] overflow-hidden" : "max-h-none"
+          )}
+        >
+          {/* Render the 6 Structured Section Blocks */}
+          {SECTIONS_CONFIG.map((sec, secIdx) => {
+            return (
+              <motion.div
+                key={sec.num}
+                layout
+                initial={false}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  borderColor: isRaw ? "rgba(22, 24, 29, 0.08)" : "rgba(22, 24, 29, 0.12)",
+                  backgroundColor: isRaw ? "#FAF9F6" : "#FFFFFF",
+                }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="p-3.5 border rounded space-y-2 transition-colors"
+              >
               {/* Section Header */}
               <div className="flex items-center gap-2">
                 <motion.span
@@ -268,24 +270,32 @@ export function AnimatedHeroComposition() {
             </motion.div>
           );
         })}
+        </div>
 
-        {/* Toggle remaining sections */}
-        {animationStep === "final" && (
-          <div className="pt-2 flex justify-center border-t border-ink-border/50">
-            <button
-              type="button"
-              onClick={() => setShowAllSections(!showAllSections)}
-              className="text-[11px] text-brand hover:underline font-medium inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded"
-            >
-              <span>{showAllSections ? "Show fewer sections" : "View all 6 generated sections"}</span>
-              <ChevronDown
-                className={cn("w-3.5 h-3.5 transition-transform duration-200", showAllSections && "rotate-180")}
-                strokeWidth={1.75}
-              />
-            </button>
+        {/* Soft bottom blur/fade when capped at ~520px (E3) */}
+        {!showAllSections && animationStep === "final" && (
+          <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none flex flex-col justify-end">
+            <ProgressiveBlur direction="top" height="36px" />
           </div>
         )}
       </div>
+
+      {/* Toggle remaining sections (E3) */}
+      {animationStep === "final" && (
+        <div className="pt-2 flex justify-center border-t border-ink-border/50">
+          <button
+            type="button"
+            onClick={() => setShowAllSections(!showAllSections)}
+            className="text-xs text-brand hover:underline font-medium inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded py-1 px-2 transition-colors"
+          >
+            <span>{showAllSections ? "Show fewer sections" : "Show all six sections"}</span>
+            <ChevronDown
+              className={cn("w-3.5 h-3.5 transition-transform duration-200", showAllSections && "rotate-180")}
+              strokeWidth={1.75}
+            />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
