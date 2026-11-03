@@ -1,29 +1,68 @@
-import { useState } from "react";
-import { RefreshCw, Copy, Check, Download, Printer, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { RefreshCw, Copy, Check, Download, Printer, Square, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 import { cn } from "@/lib/utils";
 
+const TEXT_SIZES = [
+  { id: "S", label: "S", className: "text-[15px] leading-relaxed" },
+  { id: "M", label: "M", className: "text-[17px] leading-[1.65]" },
+  { id: "L", label: "L", className: "text-[19px] leading-[1.7]" },
+];
+
 /**
- * ResultPanel: Unified document sheet container across all four study tools.
- * Handles empty (document sheet with ghost headings), loading (in-sheet skeleton),
- * error (alert with retry), and success states.
+ * ResultPanel: Unified document sheet container across all study tools.
+ * Supports:
+ * - Empty document preview sheet with ghost headings (B5)
+ * - Loading skeleton with Stop button (C4) and waking up alert if >8s (C5)
+ * - Reading comfort text size controls S/M/L (C10)
+ * - Result actions: Copy as Markdown with aria-live, Download .md, Print/PDF (C1)
+ * - AI attribution footer (B8)
  */
 export function ResultPanel({
   status = "empty",
   error = null,
   onRetry = null,
+  onStop = null,
   sections = [],
   title = "Document",
   badge = null,
   rawMarkdown = null,
   filename = "studymate-document.md",
   actions = null,
+  miniNav = null,
   children,
 }) {
   const [copied, setCopied] = useState(false);
+  const [textSize, setTextSize] = useState(() => {
+    try {
+      return localStorage.getItem("studymate_text_size_v1") || "M";
+    } catch {
+      return "M";
+    }
+  });
+
+  // Track loading elapsed time for cold start waking message (C5)
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
+
+  useEffect(() => {
+    if (status !== "loading") {
+      setLoadingSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  const handleTextSizeChange = (sizeId) => {
+    setTextSize(sizeId);
+    try {
+      localStorage.setItem("studymate_text_size_v1", sizeId);
+    } catch {}
+  };
 
   const handleCopy = () => {
     if (!rawMarkdown) return;
@@ -49,8 +88,17 @@ export function ResultPanel({
     window.print();
   };
 
+  const activeTextSizeConfig = TEXT_SIZES.find((s) => s.id === textSize) || TEXT_SIZES[1];
+
   return (
     <div className="space-y-4">
+      {/* Screen Reader Aria-Live Announcement Region (C1) */}
+      <div className="sr-only" aria-live="polite" role="status">
+        {copied ? "Formatted markdown copied to clipboard." : ""}
+        {status === "loading" ? "Document is generating..." : ""}
+        {status === "success" ? `${title} generated successfully.` : ""}
+      </div>
+
       {/* Error Banner with Retry */}
       {status === "error" && (
         <Alert
@@ -78,7 +126,7 @@ export function ResultPanel({
         </Alert>
       )}
 
-      {/* Empty State: Document Sheet with Faint Ghost Headings (B5 / A3) */}
+      {/* Empty State: Document Sheet with Ghost Headings (B5) */}
       {(status === "empty" || status === "initial") && (
         <Card className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel">
           <div className="space-y-1 pb-4 border-b border-ink-border">
@@ -118,25 +166,47 @@ export function ResultPanel({
         </Card>
       )}
 
-      {/* Loading State: The same document sheet with skeletons under ghost headings (B5 / M3) */}
+      {/* Loading State: Sheet with skeletons, Stop button (C4), and Waking Server Notice (C5) */}
       {status === "loading" && (
         <Card
           className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel"
           aria-busy="true"
           aria-live="polite"
         >
-          <div className="space-y-1 pb-4 border-b border-ink-border">
+          <div className="space-y-3 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono uppercase tracking-wider text-brand font-medium">
                 Generating Document...
               </span>
-              <span className="text-[11px] text-ink-subtle animate-pulse">
-                Synthesizing
-              </span>
+
+              {onStop && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={onStop}
+                  className="text-xs h-7 px-2.5 gap-1.5 text-feedback-error hover:border-feedback-error"
+                  title="Cancel active request"
+                >
+                  <Square className="w-3 h-3 fill-current" strokeWidth={1} />
+                  <span>Stop</span>
+                </Button>
+              )}
             </div>
+
             <h3 className="font-serif text-lg font-medium text-ink">
               {title}
             </h3>
+
+            {/* Cold Start Waking Server Alert if > 8 seconds (C5) */}
+            {loadingSeconds >= 8 && (
+              <div className="p-3 bg-[#FEF8EC] border border-[#FDE68A] rounded text-xs text-[#8A5A00] flex items-start gap-2 animate-fadeIn">
+                <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  The server is waking up. The first request can take up to a minute on cloud hosting.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -166,7 +236,7 @@ export function ResultPanel({
       {/* Success / Document Output State */}
       {(status === "success" || status === "playing" || status === "finished") && (
         <div className="space-y-4">
-          {/* Top Document Actions Bar */}
+          {/* Top Document Actions Bar with Text Size Control (C1, C10) */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-ink-border print:hidden">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-ink">
@@ -180,6 +250,26 @@ export function ResultPanel({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Reading Comfort Text Size Control S/M/L (C10) */}
+              <div className="inline-flex p-0.5 bg-[#EAE8E3] rounded border border-ink-border mr-1" title="Reading text size">
+                {TEXT_SIZES.map((sz) => (
+                  <button
+                    key={sz.id}
+                    type="button"
+                    onClick={() => handleTextSizeChange(sz.id)}
+                    className={cn(
+                      "w-6 h-6 flex items-center justify-center text-[11px] font-mono rounded transition-colors",
+                      textSize === sz.id
+                        ? "bg-white text-ink font-semibold shadow-sm"
+                        : "text-ink-secondary hover:text-ink"
+                    )}
+                    aria-label={`Text size ${sz.label}`}
+                  >
+                    {sz.label}
+                  </button>
+                ))}
+              </div>
+
               {actions}
 
               {rawMarkdown && (
@@ -189,7 +279,6 @@ export function ResultPanel({
                     variant="secondary"
                     size="sm"
                     onClick={handleCopy}
-                    aria-live="polite"
                     title="Copy formatted markdown to clipboard"
                   >
                     {copied ? (
@@ -231,9 +320,16 @@ export function ResultPanel({
             </div>
           </div>
 
-          {/* Document Content */}
-          <div className="space-y-6 print:space-y-4">
-            {children}
+          {/* Document Content with User's Chosen Text Size (C10) & Section Mini-Nav (C9) */}
+          <div className={cn("relative flex gap-6 items-start print:block", activeTextSizeConfig.className)}>
+            <div className="flex-1 min-w-0 space-y-6 print:space-y-4">
+              {children}
+            </div>
+            {miniNav && (
+              <div className="hidden xl:block w-44 shrink-0">
+                {miniNav}
+              </div>
+            )}
           </div>
 
           {/* AI Disclosure Line (B8) */}
@@ -247,4 +343,3 @@ export function ResultPanel({
     </div>
   );
 }
-
