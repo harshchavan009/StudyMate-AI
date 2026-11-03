@@ -21,16 +21,50 @@
     --radius-panel: 10px;
   }
 
+  html {
+    scroll-padding-top: 72px;
+  }
+
   body {
     background-color: var(--color-page);
     color: var(--color-ink);
     font-family: "Inter", system-ui, -apple-system, sans-serif;
   }
 
-  /* Accessible focus styling */
+  ::selection {
+    background-color: var(--color-accent-tint);
+    color: var(--color-ink);
+  }
+
+  /* Accessible 2px accent focus ring with 2px offset on every control and no glow shadows (E6) */
   *:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+  }
+
+  textarea:focus, input:focus, select:focus {
+    border-color: var(--color-accent) !important;
+  }
+
+  /* Subtle custom scrollbars (E6) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(22, 24, 29, 0.15);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(22, 24, 29, 0.28);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(22, 24, 29, 0.15) transparent;
   }
 }
 

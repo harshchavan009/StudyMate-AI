@@ -73,29 +73,17 @@ export function DisclosureTrigger({ children, className }) {
   const { toggle, open } = useDisclosure();
 
   return (
-    <>
-      {React.Children.map(children, (child) => {
-        return React.isValidElement(child)
-          ? React.cloneElement(child, {
-              onClick: (e) => {
-                if (child.props.onClick) child.props.onClick(e);
-                toggle();
-              },
-              role: "button",
-              "aria-expanded": open,
-              tabIndex: 0,
-              onKeyDown: (e) => {
-                if (child.props.onKeyDown) child.props.onKeyDown(e);
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  toggle();
-                }
-              },
-              className: cn(className, child.props.className),
-            })
-          : child;
-      })}
-    </>
+    <button
+      type="button"
+      onClick={toggle}
+      aria-expanded={open}
+      className={cn(
+        "w-full flex items-center justify-between text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-control",
+        className
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
