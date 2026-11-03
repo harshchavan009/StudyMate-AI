@@ -107,3 +107,4 @@ StudyMate AI was subjected to a comprehensive 13-point security review prior to 
 | 11. Asset Cleanup | Public / Source | Passed | Zero console.logs, clean public assets |
 | 12. Safe Logging | Python Logging | Passed | Keys and study text never logged |
 | 13. Database / Auth | Architecture | N/A | No user accounts or database needed |
+
