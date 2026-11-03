@@ -222,3 +222,4 @@ Both audits report 0 known security vulnerabilities.
 The Privacy Policy (`frontend/src/pages/PrivacyPolicy.jsx`) and Terms and Conditions (`frontend/src/pages/Terms.jsx`) pages describe how the application operates: text is sent over an encrypted HTTPS connection to the Gemini API, no persistent database or user accounts are used, and no data is sold.
 
 Before public production launch, review these legal documents and replace the contact placeholders (`[Insert Contact Name / Organization Name]`, `[Insert Contact Email Address]`, `[Insert Contact Postal Address]`) with your official contact information.
+

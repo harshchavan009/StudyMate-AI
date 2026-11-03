@@ -75,3 +75,4 @@ The following steps must be completed manually by the project owner in external 
 5. **Fill In Legal Contact Placeholders**:
    - Open `frontend/src/pages/PrivacyPolicy.jsx` and `frontend/src/pages/Terms.jsx`.
    - Replace `[Insert Contact Name / Organization Name]`, `[Insert Contact Email Address]`, and `[Insert Contact Postal Address]` with your actual contact details.
+
