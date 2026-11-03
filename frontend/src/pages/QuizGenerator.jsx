@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { HelpCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, RotateCcw, Check, Sparkles, FileText, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -618,6 +619,7 @@ export function QuizGenerator() {
 
   const resultPanel = (
     <ResultPanel
+      toolId="quiz"
       status={status}
       error={error}
       onRetry={() => handleGenerate()}
@@ -973,55 +975,67 @@ export function QuizGenerator() {
                 </span>
               </div>
 
-              {/* Flashcard with clean front/back states */}
-              <Card
+              {/* 3D Animated Interactive Flashcard */}
+              <div
+                className="perspective-1000 w-full min-h-[260px] cursor-pointer"
                 onClick={handleFlipCard}
-                className={cn(
-                  "p-6 sm:p-8 cursor-pointer min-h-[240px] flex flex-col justify-between transition-all duration-120 select-none border border-ink-border rounded-panel hover:border-brand/40 shadow-sm",
-                  isFlipped ? "bg-[#FCFBFA]" : "bg-white"
-                )}
                 role="button"
                 tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.code === "Space") {
+                    e.preventDefault();
+                    handleFlipCard();
+                  }
+                }}
                 aria-label={isFlipped ? "Answer side. Click to flip back." : "Question side. Click or press Space to reveal answer."}
               >
-                {!isFlipped ? (
-                  // Front / Question Side
-                  <div className="space-y-4 my-auto">
-                    <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle uppercase block">
-                      Question
-                    </span>
-                    <h3 className="font-serif text-lg sm:text-xl font-medium text-ink leading-relaxed">
-                      {flashcardDeck[flashcardIndex].question}
-                    </h3>
-                    <div className="pt-4 text-center">
-                      <span className="text-xs text-brand font-medium">
-                        Click card or press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Space</kbd> to reveal answer
+                <motion.div
+                  className="relative w-full min-h-[260px] transform-style-preserve-3d"
+                  initial={false}
+                  animate={{ rotateY: isFlipped ? 180 : 0 }}
+                  transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
+                >
+                  {/* Front Side: Question */}
+                  <Card className="absolute inset-0 backface-hidden p-6 sm:p-8 flex flex-col justify-between select-none border border-ink-border rounded-panel hover:border-brand/40 shadow-sm bg-white">
+                    <div className="space-y-4 my-auto">
+                      <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle uppercase block">
+                        Question
                       </span>
+                      <h3 className="font-serif text-lg sm:text-xl font-medium text-ink leading-relaxed">
+                        {flashcardDeck[flashcardIndex].question}
+                      </h3>
+                      <div className="pt-4 text-center">
+                        <span className="text-xs text-brand font-medium">
+                          Click card or press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Space</kbd> to reveal answer
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  // Back / Answer Side
-                  <div className="space-y-4 my-auto">
-                    <div className="space-y-1">
-                      <span className="text-xs font-sans tracking-[0.04em] text-feedback-success font-semibold uppercase block">
-                        Correct Answer
-                      </span>
-                      <p className="font-serif text-lg sm:text-xl font-medium text-ink">
-                        {flashcardDeck[flashcardIndex].options[flashcardDeck[flashcardIndex].correct_index]}
-                      </p>
-                    </div>
+                  </Card>
 
-                    <div className="pt-2 border-t border-ink-border/60 space-y-1">
-                      <span className="text-xs font-semibold text-ink-secondary block">
-                        Explanation
-                      </span>
-                      <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
-                        {flashcardDeck[flashcardIndex].explanation}
-                      </p>
+                  {/* Back Side: Correct Answer & Explanation */}
+                  <Card className="absolute inset-0 backface-hidden rotate-y-180 p-6 sm:p-8 flex flex-col justify-between select-none border border-ink-border rounded-panel hover:border-brand/40 shadow-sm bg-[#FCFBFA]">
+                    <div className="space-y-4 my-auto">
+                      <div className="space-y-1">
+                        <span className="text-xs font-sans tracking-[0.04em] text-feedback-success font-semibold uppercase block">
+                          Correct Answer
+                        </span>
+                        <p className="font-serif text-lg sm:text-xl font-medium text-ink">
+                          {flashcardDeck[flashcardIndex].options[flashcardDeck[flashcardIndex].correct_index]}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-ink-border/60 space-y-1">
+                        <span className="text-xs font-semibold text-ink-secondary block">
+                          Explanation
+                        </span>
+                        <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+                          {flashcardDeck[flashcardIndex].explanation}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </Card>
+                  </Card>
+                </motion.div>
+              </div>
 
               {/* Action Buttons for Flipped State */}
               {isFlipped ? (

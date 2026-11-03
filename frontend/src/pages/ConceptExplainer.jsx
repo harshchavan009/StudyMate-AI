@@ -466,6 +466,7 @@ export function ConceptExplainer() {
 
   const resultPanel = (
     <ResultPanel
+      toolId="explainer"
       status={status === "loading" ? "loading" : currentResult ? "success" : hasAnyCached ? "empty" : status}
       error={error}
       onRetry={() => fetchExplanation(selectedLevel, true)}

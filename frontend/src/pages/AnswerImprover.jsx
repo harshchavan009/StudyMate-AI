@@ -395,6 +395,7 @@ export function AnswerImprover() {
 
   const resultPanel = (
     <ResultPanel
+      toolId="improver"
       status={status}
       error={error}
       onRetry={() => handleGenerate()}

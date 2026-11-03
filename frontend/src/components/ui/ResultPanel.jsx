@@ -12,16 +12,40 @@ const TEXT_SIZES = [
   { id: "L", label: "L", className: "text-[19px] leading-[1.7]" },
 ];
 
+const TOOL_STAGES = {
+  summarizer: [
+    { label: "Segmenting study notes", desc: "Parsing core concepts and identifying domain mechanisms" },
+    { label: "Extracting definitions & key points", desc: "Structuring terminology, rules, and core insights" },
+    { label: "Synthesizing exam-prep & revision summary", desc: "Compiling revision takeaways into structured academic sections" },
+  ],
+  quiz: [
+    { label: "Scanning notes for testable propositions", desc: "Identifying key facts and foundational principles" },
+    { label: "Formulating distractors & answer keys", desc: "Crafting plausible multiple-choice options" },
+    { label: "Calibrating explanations & rationales", desc: "Writing comprehensive explanations for each question" },
+  ],
+  improver: [
+    { label: "Assessing draft precision & structure", desc: "Evaluating academic clarity, grammar, and tone" },
+    { label: "Verifying factual retention", desc: "Checking that original facts are preserved without adding new claims" },
+    { label: "Generating redline word-level revisions", desc: "Drafting sentence polish and concrete improvement suggestions" },
+  ],
+  explainer: [
+    { label: "Calibrating explanation depth", desc: "Tailoring mechanisms and vocabulary to selected difficulty level" },
+    { label: "Deconstructing core mechanisms & analogies", desc: "Building step-by-step conceptual walkthrough" },
+    { label: "Synthesizing practical applications", desc: "Compiling real-world examples and high-yield revision points" },
+  ],
+};
+
 /**
  * ResultPanel: Unified document container across all study tools.
  * Supports:
  * - Empty preview with placeholder headings (B5)
- * - Loading skeleton with Stop button (C4) and waking up alert if >8s (C5)
+ * - Loading skeleton with Stop button (C4), topic-specific animated stages, and waking up alert if >8s (C5)
  * - Reading comfort text size controls S/M/L (C10)
  * - Result actions: Copy as Markdown with aria-live, Download .md, Print/PDF (C1)
  * - AI attribution footer (B8)
  */
 export function ResultPanel({
+  toolId = "summarizer",
   status = "empty",
   error = null,
   onRetry = null,
@@ -57,6 +81,8 @@ export function ResultPanel({
     }, 1000);
     return () => clearInterval(interval);
   }, [status]);
+
+  const activeStageIdx = loadingSeconds < 3 ? 0 : loadingSeconds < 6 ? 1 : 2;
 
   const handleTextSizeChange = (sizeId) => {
     setTextSize(sizeId);
@@ -208,6 +234,59 @@ export function ResultPanel({
             <h3 className="font-serif text-lg font-medium text-ink">
               {title}
             </h3>
+
+            {/* Topic-Specific Processing Pipeline Animation */}
+            {TOOL_STAGES[toolId] && (
+              <div className="pt-2 space-y-2.5">
+                <div className="flex items-center justify-between text-[11px] font-medium text-ink-subtle">
+                  <span>Topic Processing Pipeline</span>
+                  <span className="font-sans tabular-nums text-brand">
+                    Step {Math.min(activeStageIdx + 1, 3)} of 3
+                  </span>
+                </div>
+                {/* Visual animated multi-segment bar */}
+                <div className="h-1.5 w-full bg-[#EAE8E3] rounded-full overflow-hidden flex">
+                  <motion.div
+                    className="h-full bg-brand"
+                    initial={{ width: "15%" }}
+                    animate={{
+                      width: activeStageIdx === 0 ? "35%" : activeStageIdx === 1 ? "70%" : "95%",
+                    }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  />
+                </div>
+                {/* 3 Step status badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  {TOOL_STAGES[toolId].map((stg, sIdx) => {
+                    const isDone = sIdx < activeStageIdx;
+                    const isCurr = sIdx === activeStageIdx;
+                    return (
+                      <div
+                        key={sIdx}
+                        className={cn(
+                          "p-2 rounded border text-left text-xs transition-colors duration-200",
+                          isCurr && "bg-brand-tint border-brand/40 text-brand font-medium",
+                          isDone && "bg-[#F5F9F6] border-feedback-success/30 text-feedback-success",
+                          !isDone && !isCurr && "bg-[#FCFBFA] border-ink-border/50 text-ink-subtle"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {isDone ? (
+                            <Check className="w-3 h-3 text-feedback-success shrink-0" strokeWidth={2.5} />
+                          ) : isCurr ? (
+                            <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-[#D3D2CA] shrink-0" />
+                          )}
+                          <span className="font-semibold text-[11px] truncate">{stg.label}</span>
+                        </div>
+                        <p className="text-[10px] text-ink-secondary/80 line-clamp-1">{stg.desc}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Cold Start Waking Server Alert if > 8 seconds (C5) */}
             {loadingSeconds >= 8 && (

@@ -127,6 +127,7 @@ export function Sidebar({ collapsed = false, drawerOpen = false, onClose = null 
           <AnimatedBackground
             defaultValue={location.pathname}
             className="bg-brand-tint rounded-md"
+            innerClassName="justify-start gap-3 h-full px-3.5"
             transition={{ type: "tween", ease: "easeOut", duration: 0.18 }}
           >
             {NAV_ITEMS.map((item) => {
@@ -140,16 +141,16 @@ export function Sidebar({ collapsed = false, drawerOpen = false, onClose = null 
                   to={item.path}
                   onClick={handleLinkClick}
                   className={cn(
-                    "w-full h-10 relative flex items-center justify-start text-left gap-3 px-4 text-xs rounded-control transition-colors duration-120 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                    "w-full h-10 relative flex items-center justify-start text-left text-xs rounded-control transition-colors duration-120 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                     isActive
                       ? "text-brand font-semibold"
-                      : "text-ink-secondary hover:text-ink font-normal"
+                      : "text-ink-secondary hover:text-ink font-normal hover:bg-[#F5F4F0]"
                   )}
                   title={collapsed && !drawerOpen ? item.label : undefined}
                 >
-                  {/* 2px solid accent bar on the left when active (B3) */}
+                  {/* 2px solid accent bar on the left when active (B3 / Carry over a, b) */}
                   {isActive && (
-                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-brand rounded-r" />
+                    <span className="absolute left-0 top-2 bottom-2 w-[2px] bg-brand rounded-r" />
                   )}
                   <Icon
                     className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-brand" : "text-ink-subtle")}

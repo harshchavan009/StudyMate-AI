@@ -7,6 +7,7 @@ export function AnimatedBackground({
   defaultValue,
   onValueChange,
   className,
+  innerClassName,
   transition = { type: "tween", ease: "easeOut", duration: 0.2 },
   enableHover = false,
 }) {
@@ -65,7 +66,7 @@ export function AnimatedBackground({
             />
           )}
         </AnimatePresence>
-        <span className="relative z-10 w-full flex items-center justify-center">
+        <span className={cn("relative z-10 w-full flex items-center", innerClassName || "justify-center")}>
           {child.props.children}
         </span>
       </>

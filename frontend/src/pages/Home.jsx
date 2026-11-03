@@ -289,19 +289,19 @@ export function Home() {
           </h2>
         </div>
 
-        <div className="divide-y divide-ink-border border-y border-ink-border">
+        <div className="space-y-2">
           {TOOLS_INDEX.map((tool) => (
             <Link
               key={tool.path}
               to={tool.path}
-              className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
+              className="py-5 px-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group bg-white border border-ink-border rounded-panel hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm transition-all duration-150"
             >
               <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
-                <span className="font-sans tabular-nums text-sm text-ink-subtle shrink-0">
+                <span className="font-sans tabular-nums text-sm font-semibold text-brand/70 group-hover:text-brand transition-colors shrink-0">
                   {tool.num}
                 </span>
                 <div className="space-y-1">
-                  <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
+                  <h3 className="font-serif text-xl sm:text-2xl font-medium text-ink group-hover:text-brand transition-colors leading-snug">
                     {tool.title}
                   </h3>
                   <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
@@ -310,8 +310,8 @@ export function Home() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
-                <span>Open</span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-brand shrink-0 self-end sm:self-center">
+                <span>Open tool</span>
                 <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
               </div>
             </Link>

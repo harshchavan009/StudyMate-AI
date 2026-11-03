@@ -71,7 +71,7 @@ const SECTIONS_CONFIG = [
 export function AnimatedHeroComposition() {
   const shouldReduceMotion = useReducedMotion();
   const [isAnimating, setIsAnimating] = useState(false);
-  const [animationStep, setAnimationStep] = useState("final"); // 'raw' | 'grouping' | 'final'
+  const [animationStep, setAnimationStep] = useState(shouldReduceMotion ? "final" : "raw"); // 'raw' | 'grouping' | 'final'
   const [showAllSections, setShowAllSections] = useState(false);
 
   const startAnimation = () => {
@@ -81,15 +81,12 @@ export function AnimatedHeroComposition() {
     // Grouping phase over 1.2s
     const groupTimer = setTimeout(() => {
       setAnimationStep("grouping");
-    }, 350);
+    }, 400);
 
     const finalTimer = setTimeout(() => {
       setAnimationStep("final");
       setIsAnimating(false);
-      try {
-        sessionStorage.setItem("studymate_hero_played", "true");
-      } catch {}
-    }, 1250);
+    }, 1300);
 
     return () => {
       clearTimeout(groupTimer);
@@ -102,17 +99,10 @@ export function AnimatedHeroComposition() {
       setAnimationStep("final");
       return;
     }
-
-    try {
-      const alreadyPlayed = sessionStorage.getItem("studymate_hero_played");
-      if (!alreadyPlayed) {
-        startAnimation();
-      } else {
-        setAnimationStep("final");
-      }
-    } catch {
-      setAnimationStep("final");
-    }
+    const cleanup = startAnimation();
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [shouldReduceMotion]);
 
   const { source_text, result } = exampleData;

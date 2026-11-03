@@ -82,6 +82,38 @@
   animation: pulseSlow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Flow dash animation for transformation diagrams */
+@keyframes flowDash {
+  0% {
+    stroke-dashoffset: 12;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-flow-dash {
+  animation: flowDash 1.2s linear infinite;
+}
+
+/* 3D Flashcard flip container */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
 /* Reduced motion preference fallback */
 @media (prefers-reduced-motion: reduce) {
   *,

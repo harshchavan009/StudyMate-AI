@@ -250,12 +250,19 @@ export function Summarizer() {
           )}
         />
 
-        <FieldCounter
-          count={charCount}
-          max={limits.max}
-          min={limits.min}
-          helperText="20 to 10,000 characters."
-        />
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <FieldCounter
+            count={charCount}
+            max={limits.max}
+            min={limits.min}
+            helperText="20 to 10,000 characters."
+          />
+          {charCount >= 20 && (
+            <span className="text-[11px] font-sans tabular-nums text-ink-subtle">
+              ~{text.trim().split(/\s+/).length} words · ~{Math.max(1, Math.ceil(text.trim().split(/\s+/).length / 200))} min read
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
@@ -313,6 +320,7 @@ export function Summarizer() {
 
   const resultPanel = (
     <ResultPanel
+      toolId="summarizer"
       status={status}
       error={error}
       onRetry={() => handleGenerate()}

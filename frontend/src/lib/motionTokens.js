@@ -18,3 +18,4 @@ export const MOTION_TRANSITIONS = {
   panel: { duration: MOTION_DURATIONS.panel, ease: MOTION_EASE },
   signature: { duration: MOTION_DURATIONS.signature, ease: MOTION_EASE },
 };
+

@@ -181,21 +181,18 @@ export function AppShell() {
             <ProgressiveBlur direction="bottom" />
           </div>
 
-          {/* Route Change Transition: 150ms fade with 4px rise (M2) */}
-          <AnimatePresence mode="wait">
-            <motion.main
-              key={location.pathname}
-              id="main-content"
-              tabIndex={-1}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-7xl w-full mx-auto focus:outline-none"
-            >
-              <Outlet />
-            </motion.main>
-          </AnimatePresence>
+          {/* Route Change Transition: smooth 120ms fade without blocking blank states (M2) */}
+          <motion.main
+            key={location.pathname}
+            id="main-content"
+            tabIndex={-1}
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
+            className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-7xl w-full mx-auto focus:outline-none"
+          >
+            <Outlet />
+          </motion.main>
 
           {/* Footer */}
           <Footer />
