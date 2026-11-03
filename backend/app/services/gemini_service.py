@@ -25,23 +25,23 @@ from app.schemas import (
     ImproveAnswerResponse,
     ExplainConceptResponse,
     ExplanationStep,
+    DefinitionItem,
+    ChangedPhrase,
 )
 
 logger = logging.getLogger("studymate.gemini")
 
-# Sanitize text by removing em dashes and en dashes
+
 def sanitize_dashes(text: str) -> str:
+    """Replace em dashes and en dashes with commas or colons."""
     if not isinstance(text, str):
         return text
-    # Replace em-dashes and en-dashes with comma or colon as appropriate
-    text = text.replace("—", ", ").replace("–", ", ")
-    return text
+    return text.replace("—", ", ").replace("–", ", ")
 
 
 def clean_json_string(raw: str) -> str:
     """Extract and sanitize raw JSON string from LLM output."""
     raw = raw.strip()
-    # Strip markdown code blocks if present
     if raw.startswith("```json"):
         raw = raw[7:]
     elif raw.startswith("```"):
@@ -50,7 +50,6 @@ def clean_json_string(raw: str) -> str:
         raw = raw[:-3]
     raw = raw.strip()
 
-    # Sometimes model includes leading or trailing text around JSON
     json_start = raw.find("{")
     json_end = raw.rfind("}")
     if json_start != -1 and json_end != -1 and json_end > json_start:
@@ -73,7 +72,7 @@ class GeminiService:
             logger.warning("GEMINI_API_KEY is not set. Service running in mock/fallback mode.")
 
     def _call_model(self, system_instruction: str, user_content: str) -> str:
-        """Call Gemini API or return mock if not configured."""
+        """Call Gemini API or return error if key missing."""
         if not self.model or not self.api_key:
             raise ValueError("GEMINI_API_KEY_UNSET")
 
@@ -93,16 +92,22 @@ class GeminiService:
             raise e
 
     # -----------------------------------------------------
-    # 1. Summarizer
+    # 1. Summarizer (6 Exact Spec Sections)
     # -----------------------------------------------------
     def generate_summary(self, text: str) -> SummarizeResponse:
-        """Generate structured 6-section academic summary."""
+        """Generate structured 6-section academic summary:
+        1. Topic Overview
+        2. Key Concepts
+        3. Important Definitions
+        4. Important Points
+        5. Exam Preparation Notes
+        6. Quick Revision Summary
+        """
         if not self.api_key:
             return self._mock_summary(text)
 
         user_prompt = build_summarizer_user_prompt(text)
         max_attempts = 3
-        last_error = None
 
         for attempt in range(max_attempts):
             try:
@@ -110,43 +115,36 @@ class GeminiService:
                 cleaned = clean_json_string(raw_response)
                 data = json.loads(cleaned)
 
-                # Format raw markdown for clean reading
                 markdown_lines = [
-                    f"## Executive Summary\n\n{data.get('executive_summary', '')}\n",
+                    f"# Topic Overview\n\n{data.get('topic_overview', '')}\n",
                     "## Key Concepts\n",
                 ]
                 for concept in data.get("key_concepts", []):
                     markdown_lines.append(f"- {concept}")
 
-                markdown_lines.append("\n## Detailed Structural Breakdown\n")
-                for sec in data.get("breakdown_sections", []):
-                    markdown_lines.append(f"### {sec.get('title', 'Section')}")
-                    for pt in sec.get("points", []):
-                        markdown_lines.append(f"- {pt}")
-                    markdown_lines.append("")
-
-                markdown_lines.append("## Important Definitions\n")
+                markdown_lines.append("\n## Important Definitions\n")
                 for item in data.get("important_definitions", []):
                     markdown_lines.append(f"- **{item.get('term', '')}**: {item.get('definition', '')}")
 
-                markdown_lines.append("\n## Practical Applications\n")
-                for app in data.get("practical_applications", []):
-                    markdown_lines.append(f"- {app}")
+                markdown_lines.append("\n## Important Points\n")
+                for pt in data.get("important_points", []):
+                    markdown_lines.append(f"- {pt}")
 
-                markdown_lines.append("\n## Review Questions\n")
-                for q in data.get("review_questions", []):
-                    markdown_lines.append(f"1. {q}")
+                markdown_lines.append("\n## Exam Preparation Notes\n")
+                for note in data.get("exam_preparation_notes", []):
+                    markdown_lines.append(f"- {note}")
+
+                markdown_lines.append(f"\n## Quick Revision Summary\n\n{data.get('quick_revision_summary', '')}\n")
 
                 data["raw_markdown"] = "\n".join(markdown_lines)
                 return SummarizeResponse.model_validate(data)
 
             except Exception as e:
-                last_error = e
                 logger.warning("Summarize attempt %d failed: %s", attempt + 1, str(e))
 
         raise HTTPException(
             status_code=502,
-            detail="Unable to generate a valid structured summary after multiple attempts. Please try again."
+            detail="Unable to generate a valid structured summary. Please try again."
         )
 
     # -----------------------------------------------------
@@ -158,8 +156,7 @@ class GeminiService:
             return self._mock_quiz(text, difficulty, count)
 
         user_prompt = build_quiz_user_prompt(text, difficulty, count)
-        max_attempts = 3  # initial + max 2 retries
-        last_error = None
+        max_attempts = 3
 
         for attempt in range(max_attempts):
             try:
@@ -167,11 +164,9 @@ class GeminiService:
                 cleaned = clean_json_string(raw_response)
                 data = json.loads(cleaned)
 
-                # Validate data schema
                 if "questions" not in data or not isinstance(data["questions"], list):
                     raise ValueError("JSON response missing 'questions' array.")
 
-                # Ensure questions list is non-empty and has required structure
                 parsed_questions = []
                 for idx, q in enumerate(data["questions"][:count]):
                     q_id = q.get("id", idx + 1)
@@ -201,23 +196,27 @@ class GeminiService:
                 )
 
             except Exception as e:
-                last_error = e
                 logger.warning("Quiz generation attempt %d failed: %s", attempt + 1, str(e))
 
         raise HTTPException(
             status_code=502,
-            detail="The model output could not be validated into a reliable quiz format after 2 retries. Please retry with clearer study text."
+            detail="The quiz output could not be validated after 2 retries. Please retry with clearer study text."
         )
 
     # -----------------------------------------------------
-    # 3. Answer Improver
+    # 3. Answer Improver (Exact Spec Sections)
     # -----------------------------------------------------
-    def improve_answer(self, question: str, draft_answer: str) -> ImproveAnswerResponse:
-        """Evaluate draft answer, provide critique and improved version."""
+    def improve_answer(self, answer: str, subject_or_topic: Optional[str] = None) -> ImproveAnswerResponse:
+        """Evaluate draft answer without adding external facts.
+        1. Original Answer Feedback
+        2. Improved Answer
+        3. Key Improvements Made
+        4. Suggestions for Further Improvement
+        """
         if not self.api_key:
-            return self._mock_improver(question, draft_answer)
+            return self._mock_improver(answer, subject_or_topic)
 
-        user_prompt = build_improver_user_prompt(question, draft_answer)
+        user_prompt = build_improver_user_prompt(answer, subject_or_topic)
         max_attempts = 3
 
         for attempt in range(max_attempts):
@@ -225,7 +224,8 @@ class GeminiService:
                 raw_response = self._call_model(IMPROVER_SYSTEM_PROMPT, user_prompt)
                 cleaned = clean_json_string(raw_response)
                 data = json.loads(cleaned)
-                data["original_answer"] = draft_answer
+                data["original_answer"] = answer
+                data["subject_or_topic"] = subject_or_topic
                 return ImproveAnswerResponse.model_validate(data)
             except Exception as e:
                 logger.warning("Answer improvement attempt %d failed: %s", attempt + 1, str(e))
@@ -236,14 +236,21 @@ class GeminiService:
         )
 
     # -----------------------------------------------------
-    # 4. Concept Explainer
+    # 4. Concept Explainer (6 Exact Spec Sections)
     # -----------------------------------------------------
-    def explain_concept(self, concept: str, level: str, context: Optional[str] = None) -> ExplainConceptResponse:
-        """Explain concept at specified academic depth."""
+    def explain_concept(self, concept: str, level: str, subject: str = "Other") -> ExplainConceptResponse:
+        """Explain concept at specified academic depth:
+        1. Introduction
+        2. Detailed Explanation
+        3. Step-by-Step Understanding
+        4. Practical Example
+        5. Real-World Applications
+        6. Quick Revision Points
+        """
         if not self.api_key:
-            return self._mock_explainer(concept, level)
+            return self._mock_explainer(concept, level, subject)
 
-        user_prompt = build_explainer_user_prompt(concept, level, context)
+        user_prompt = build_explainer_user_prompt(concept, level, subject)
         max_attempts = 3
 
         for attempt in range(max_attempts):
@@ -253,27 +260,26 @@ class GeminiService:
                 data = json.loads(cleaned)
                 data["concept"] = concept
                 data["level"] = level
+                data["subject"] = subject
 
-                # Generate formatted markdown
                 markdown_lines = [
-                    f"# Understanding {concept} ({level.capitalize()} Level)\n",
-                    f"## Intuitive Analogy\n\n{data.get('intuitive_analogy', '')}\n",
-                    "## Foundational Principles\n",
+                    f"# Introduction: {concept}\n\n{data.get('introduction', '')}\n",
+                    f"## Detailed Explanation ({level.capitalize()} Level)\n\n{data.get('detailed_explanation', '')}\n",
+                    "## Step-by-Step Understanding\n",
                 ]
-                for p in data.get("foundational_principles", []):
-                    markdown_lines.append(f"- {p}")
-
-                markdown_lines.append("\n## Step-by-Step Breakdown\n")
-                for step in data.get("step_by_step_breakdown", []):
+                for step in data.get("step_by_step_understanding", []):
                     markdown_lines.append(f"### Step {step.get('step_number', '')}: {step.get('title', '')}")
                     markdown_lines.append(f"{step.get('description', '')}\n")
 
-                markdown_lines.append("## Key Terminology\n")
-                for term in data.get("key_terms", []):
-                    markdown_lines.append(f"- **{term.get('term', '')}**: {term.get('definition', '')}")
+                markdown_lines.append(f"## Practical Example\n\n{data.get('practical_example', '')}\n")
 
-                markdown_lines.append(f"\n## Real-World Case Study\n\n{data.get('real_world_case', '')}\n")
-                markdown_lines.append(f"## Self-Check Exercise\n\n{data.get('self_check_exercise', '')}\n")
+                markdown_lines.append("## Real-World Applications\n")
+                for app in data.get("real_world_applications", []):
+                    markdown_lines.append(f"- {app}")
+
+                markdown_lines.append("\n## Quick Revision Points\n")
+                for pt in data.get("quick_revision_points", []):
+                    markdown_lines.append(f"- {pt}")
 
                 data["raw_markdown"] = "\n".join(markdown_lines)
                 return ExplainConceptResponse.model_validate(data)
@@ -287,75 +293,62 @@ class GeminiService:
         )
 
     # -----------------------------------------------------
-    # Deterministic Mock Responses for Testing & Zero-Key Mode
+    # Deterministic Mock Fallbacks
     # -----------------------------------------------------
     def _mock_summary(self, text: str) -> SummarizeResponse:
         title = text.split("\n")[0][:60].strip() or "Academic Study Text"
         return SummarizeResponse(
-            executive_summary=(
-                f"This document centers on {title}. It establishes core theoretical foundations, "
-                "examines primary mechanisms, and outlines empirical applications across contemporary problem domains."
+            topic_overview=(
+                f"This document examines the foundations and mechanisms of {title}. "
+                "It synthesizes core principles, critical terminology, and operational dynamics for study review."
             ),
             key_concepts=[
                 "Structural decoupling of independent component responsibilities",
                 "Deterministic verification through measurable state transitions",
                 "Conservation principles governing energy and information flow",
-                "Heuristic optimization under bounded computational constraints",
-            ],
-            breakdown_sections=[
-                {
-                    "title": "Theoretical Foundations",
-                    "points": [
-                        "Primary axioms establish foundational behavioral boundaries.",
-                        "Observed phenomena correlate directly with initial condition variables.",
-                    ],
-                },
-                {
-                    "title": "Operational Dynamics",
-                    "points": [
-                        "Sequential state evaluation minimizes execution latency.",
-                        "Feedback loops reinforce stabilizing variables during perturbation.",
-                    ],
-                },
+                "Equilibrium restoration under bounded external constraints",
             ],
             important_definitions=[
-                {
-                    "term": "Invariant State",
-                    "definition": "A condition that remains strictly true across all valid execution cycles.",
-                },
-                {
-                    "term": "Equilibrium Constant",
-                    "definition": "The quantitative ratio of forward to reverse rates at steady state.",
-                },
+                DefinitionItem(
+                    term="Invariant State",
+                    definition="A condition that remains strictly true across all valid execution cycles.",
+                ),
+                DefinitionItem(
+                    term="Equilibrium Constant",
+                    definition="The quantitative ratio of forward to reverse rates at steady state.",
+                ),
             ],
-            practical_applications=[
-                "Fault tolerant distributed system verification in mission critical software",
-                "Predictive modeling in high throughput experimental setups",
+            important_points=[
+                "Initial constraints directly govern the stability of subsequent steady states.",
+                "Feedback mechanisms attenuate transient disruptions without introducing secondary oscillations.",
+                "Modular boundaries isolate failures and simplify independent verification.",
             ],
-            review_questions=[
-                "How do initial constraints influence long term equilibrium in this model?",
-                "Which mechanism prevents cascading failures during high load conditions?",
-                "In what scenario would the primary operational assumption fail?",
+            exam_preparation_notes=[
+                "Ensure clear distinction between steady-state equilibrium and transient states on short-answer questions.",
+                "Memorize the relationship between rate constants and activation energy thresholds.",
+                "Common pitfall: confusing open-loop assumptions with closed-loop regulatory behavior.",
             ],
+            quick_revision_summary=(
+                "Key takeaways: system stability depends on balanced feedback loops, decoupled components isolate failure modes, "
+                "and steady-state values reflect initial boundary constraints."
+            ),
             raw_markdown=(
-                f"## Executive Summary\n\nThis document centers on {title}.\n\n"
-                "## Key Concepts\n- Structural decoupling of independent component responsibilities\n"
-                "- Deterministic verification through measurable state transitions\n\n"
-                "## Detailed Structural Breakdown\n### Theoretical Foundations\n- Primary axioms establish boundaries.\n\n"
+                f"# Topic Overview\n\nThis document examines {title}.\n\n"
+                "## Key Concepts\n- Structural decoupling of independent components\n- Deterministic verification\n\n"
                 "## Important Definitions\n- **Invariant State**: A condition that remains strictly true.\n\n"
-                "## Practical Applications\n- Fault tolerant distributed system verification\n\n"
-                "## Review Questions\n1. How do initial constraints influence equilibrium?"
+                "## Important Points\n- Initial constraints govern stability.\n\n"
+                "## Exam Preparation Notes\n- Distinguish between steady-state and transient conditions.\n\n"
+                "## Quick Revision Summary\nBalanced feedback maintains stability."
             ),
         )
 
     def _mock_quiz(self, text: str, difficulty: str, count: int) -> QuizResponse:
-        questions: List[QuizQuestion] = []
         templates = [
             (
                 "What is the primary function of deterministic state verification?",
                 [
                     "Ensuring system invariants remain true across execution cycles",
-                    "Maximizing raw computational throughput at any cost",
+                    "Maximizing computational throughput regardless of accuracy",
                     "Eliminating the need for input parameter boundaries",
                     "Randomizing process scheduling across virtual threads",
                 ],
@@ -408,9 +401,9 @@ class GeminiService:
             ),
         ]
 
+        questions: List[QuizQuestion] = []
         for i in range(count):
-            q_idx = i % len(templates)
-            q_stem, opts, correct_idx, expl = templates[q_idx]
+            q_stem, opts, correct_idx, expl = templates[i % len(templates)]
             questions.append(
                 QuizQuestion(
                     id=i + 1,
@@ -427,147 +420,133 @@ class GeminiService:
             questions=questions,
         )
 
-    def _mock_improver(self, question: str, draft_answer: str) -> ImproveAnswerResponse:
+    def _mock_improver(self, answer: str, subject_or_topic: Optional[str] = None) -> ImproveAnswerResponse:
         return ImproveAnswerResponse(
-            original_answer=draft_answer,
+            original_answer=answer,
+            subject_or_topic=subject_or_topic,
+            original_answer_feedback=(
+                "Your draft demonstrates a clear grasp of the core reasoning and states the correct central ideas. "
+                "The primary opportunity for improvement lies in organizing your points into clearer sentences, "
+                "using standard academic phrasing, and establishing logical transitions between your premises."
+            ),
             improved_answer=(
-                f"In response to the question regarding {question[:50].strip()}, the draft argues validly "
-                "but requires higher precision. Specifically, the revised formulation explicitly categorizes "
-                "the underlying causal mechanisms, replaces colloquial phrasing with standard academic terminology, "
-                "and articulates both the immediate effects and structural implications with verifiable clarity."
+                f"Regarding {subject_or_topic or 'this topic'}, the underlying mechanisms operate through distinct, "
+                "measurable interactions. Specifically, rapid state transitions occur under dynamic load, and stability "
+                "is maintained through continuous feedback equilibrium. By actively mitigating unmitigated failure modes, "
+                "the system prevents cascading degradation while preserving operational invariants."
             ),
+            key_improvements_made=[
+                "Replaced informal, conversational wording with precise academic phrasing.",
+                "Organized loose statements into coherent, cause-and-effect sentence structures.",
+                "Strictly retained your existing arguments and premises without introducing outside facts.",
+            ],
+            suggestions_for_further_improvement=[
+                "Consider defining your key terms in your opening sentence before detailing their interactions.",
+                "Use bullet points or distinct paragraphs if writing an extended answer on an exam.",
+            ],
             changed_phrases=[
-                {
-                    "original_phrase": "a lot of things change quickly",
-                    "improved_phrase": "rapid state transitions occur under dynamic load",
-                    "reason": "Replaces vague colloquial language with precise technical terminology.",
-                },
-                {
-                    "original_phrase": "it works because it has to",
-                    "improved_phrase": "stability is enforced through continuous feedback equilibrium",
-                    "reason": "Substitutes an unsubstantiated assertion with a defined mechanistic explanation.",
-                },
-                {
-                    "original_phrase": "bad stuff can happen",
-                    "improved_phrase": "unmitigated failure modes risk cascading degradation",
-                    "reason": "Clarifies the nature and severity of potential operational vulnerabilities.",
-                },
+                ChangedPhrase(
+                    original_phrase="a lot of things change quickly",
+                    improved_phrase="rapid state transitions occur under dynamic load",
+                    reason="Replaces colloquial language with clear technical phrasing.",
+                ),
+                ChangedPhrase(
+                    original_phrase="it works because it has to",
+                    improved_phrase="stability is maintained through continuous feedback equilibrium",
+                    reason="Provides an exact mechanistic explanation instead of an informal assertion.",
+                ),
+                ChangedPhrase(
+                    original_phrase="bad stuff can happen",
+                    improved_phrase="unmitigated failure modes risk cascading degradation",
+                    reason="Clarifies the specific operational risk with formal vocabulary.",
+                ),
             ],
-            strengths=[
-                "Correctly identifies the central topic and primary objective of the prompt.",
-                "Demonstrates intuitive grasp of the core relationship between variables.",
-            ],
-            weaknesses=[
-                "Over-relies on conversational terminology where formal academic terms are expected.",
-                "Omits secondary consequences and fails to state explicit boundary conditions.",
-            ],
-            missing_key_points=[
-                "Clear citation of the governing theoretical principle or formula.",
-                "Discussion of edge conditions under which the proposed model breaks down.",
-            ],
-            estimated_score_before=5,
-            estimated_score_after=9,
-            summary_of_changes=(
-                "Elevated vocabulary to formal academic standards, established rigorous causal links, "
-                "and provided structured paragraph separation for improved exam evaluation."
-            ),
         )
 
-    def _mock_explainer(self, concept: str, level: str) -> ExplainConceptResponse:
+    def _mock_explainer(self, concept: str, level: str, subject: str = "Other") -> ExplainConceptResponse:
         level_map = {
             "beginner": (
-                "Think of this concept like an orchestra conductor who ensures every musician plays their instrument "
-                "at the exact right beat, preventing chaotic noise.",
+                f"Welcome to {concept}. Think of this like a household thermostat: it measures conditions and adjusts actions to keep everything balanced.",
+                f"{concept} is an approach that solves problems by dividing work into smaller, predictable steps so nothing gets overwhelmed.",
                 [
-                    "Every part has a specific responsibility.",
-                    "Communication happens through simple, clear signals.",
-                    "The system stays balanced by adjusting when tempo changes.",
+                    ExplanationStep(step_number=1, title="Observe", description="The system checks for incoming signals or changes in its surroundings."),
+                    ExplanationStep(step_number=2, title="Decide", description="It follows a simple rule to select the right response."),
+                    ExplanationStep(step_number=3, title="Act", description="It carries out the chosen action smoothly without affecting other parts."),
+                ],
+                "A home heating system turning on when room temperature drops below 20 degrees.",
+                [
+                    "Smart home heating and cooling systems",
+                    "Automated water level monitors in storage tanks",
                 ],
                 [
-                    ExplanationStep(step_number=1, title="Receiving the Signal", description="The system monitors its environment for any incoming change or stimulus."),
-                    ExplanationStep(step_number=2, title="Evaluating the Rule", description="It checks its simple internal instructions to see what response is needed."),
-                    ExplanationStep(step_number=3, title="Delivering the Output", description="The action is performed cleanly without disturbing adjacent components."),
-                ],
-                [
-                    {"term": "Input", "definition": "Information or energy entering the system from outside."},
-                    {"term": "Feedback", "definition": "Information returned to the system telling it how well it is working."},
-                ],
-                "A home thermostat turning on heat when room temperature drops below a set threshold.",
-                "If room temperature suddenly spikes by 10 degrees, what would the thermostat do first?"
+                    "Remember the 3 steps: Observe, Decide, Act.",
+                    "The primary goal is keeping the system stable under changing conditions.",
+                ]
             ),
             "intermediate": (
-                "Consider this concept as a dual-reservoir hydraulic valve where pressure variations in the primary "
-                "chamber dynamically modulate orifice resistance to stabilize downstream flow.",
+                f"{concept} in {subject} provides a systematic framework for managing equilibrium and resource allocation.",
+                f"At an intermediate level, {concept} balances opposing forces through closed-loop feedback, minimizing discrepancies between targets and actual states.",
                 [
-                    "Dynamic equilibrium between opposing rate constants",
-                    "Closed-loop feedback regulation minimizing steady-state error",
-                    "Explicit separation of control planes from data execution planes",
-                    "Predictable attenuation of external shock frequencies",
+                    ExplanationStep(step_number=1, title="Telemetry Measurement", description="Sensors track differential parameters across boundary interfaces."),
+                    ExplanationStep(step_number=2, title="Error Transform Calculation", description="The error signal is processed through proportional and integral transforms."),
+                    ExplanationStep(step_number=3, title="Actuator Resistance Modulation", description="Variable resistance elements regulate flow to restore setpoints."),
+                    ExplanationStep(step_number=4, title="Settling and Damping", description="Transient oscillations decay within predictable time bounds."),
+                ],
+                "Aircraft flight control surfaces compensating automatically for atmospheric turbulence.",
+                [
+                    "Industrial chemical process temperature control",
+                    "Autopilot navigation systems in modern aviation",
                 ],
                 [
-                    ExplanationStep(step_number=1, title="State Observation", description="Continuous telemetry measures instantaneous differential pressure across the boundary."),
-                    ExplanationStep(step_number=2, title="Transfer Function Evaluation", description="The error signal is processed through proportional and integral transforms."),
-                    ExplanationStep(step_number=3, title="Actuator Modulation", description="Variable resistance elements adjust cross-sectional throughput."),
-                    ExplanationStep(step_number=4, title="Settling and Dampening", description="Transient oscillations decay within predetermined settling time bounds."),
-                ],
-                [
-                    {"term": "Steady-State Error", "definition": "The persistent discrepancy between desired setpoint and actual measured output as time approaches infinity."},
-                    {"term": "Transfer Function", "definition": "A mathematical representation describing output response relative to input frequency components."},
-                    {"term": "Damping Ratio", "definition": "A dimensionless measure describing how rapidly oscillations in a system decay after disturbance."},
-                ],
-                "Modern aircraft fly-by-wire flight control surfaces compensating for atmospheric turbulence.",
-                "Explain why an under-damped system experiences overshoot before reaching steady-state."
+                    "Closed-loop feedback is essential to eliminate steady-state error.",
+                    "Damping ratios determine how quickly transient oscillations decay.",
+                ]
             ),
             "advanced": (
-                "Formally, this system is modeled as a non-linear stochastic differential equation governed by a Lyapunov "
-                "stability criterion with bounded state-space constraints.",
+                f"Formally, {concept} represents a bounded state-space dynamical system governed by strict stability criteria.",
+                f"In advanced {subject}, {concept} models non-linear stochastic interactions, requiring Lyapunov convergence proofs and Kalman noise filtration.",
                 [
-                    "Strict Lyapunov asymptotic stability criteria across all eigenvalues",
-                    "Stochastic perturbation mitigation via optimal Kalman filtering",
-                    "Information entropy minimization over finite time horizons",
-                    "Asymptotic convergence guarantees under non-Gaussian noise distributions",
-                    "Decoupled Hamiltonian energy manifolds ensuring phase space preservation",
+                    ExplanationStep(step_number=1, title="Phase Space Mapping", description="State trajectories are formulated on manifold coordinates."),
+                    ExplanationStep(step_number=2, title="Jacobian Linearization", description="Local linearization around non-trivial equilibria yields eigenvalue spectra."),
+                    ExplanationStep(step_number=3, title="Lyapunov Energy Construction", description="Positive-definite scalar energy candidates are differentiated along trajectories."),
+                    ExplanationStep(step_number=4, title="Bifurcation Analysis", description="Parametric continuation identifies boundary stability conditions."),
+                    ExplanationStep(step_number=5, title="Optimal Policy Synthesis", description="Hamilton-Jacobi-Bellman formulation establishes optimal control policies."),
+                ],
+                "High-frequency autonomous algorithmic trading systems dynamically balancing risk exposure across correlated asset classes during market volatility.",
+                [
+                    "Orbital trajectory correction in aerospace engineering",
+                    "Distributed grid frequency stabilization in renewable energy networks",
                 ],
                 [
-                    ExplanationStep(step_number=1, title="Phase Space Formulation", description="System trajectories are mapped onto Riemannian manifold coordinates."),
-                    ExplanationStep(step_number=2, title="Jacobian Linearization", description="Local linearization around non-trivial equilibria yields characteristic eigenvalue spectra."),
-                    ExplanationStep(step_number=3, title="Lyapunov Function Construction", description="Positive-definite scalar energy candidates are differentiated along system trajectories."),
-                    ExplanationStep(step_number=4, title="Bifurcation Boundary Analysis", description="Parametric continuation identifies Hopf and saddle-node boundary conditions."),
-                    ExplanationStep(step_number=5, title="Optimal Control Synthesis", description="Hamilton-Jacobi-Bellman formulation establishes globally optimal control policies."),
-                ],
-                [
-                    {"term": "Lyapunov Exponent", "definition": "A quantity characterizing the rate of separation of infinitesimally close trajectories in phase space."},
-                    {"term": "Hopf Bifurcation", "definition": "A local bifurcation in which a critical point of a dynamical system loses stability as a pair of complex conjugate eigenvalues crosses the imaginary axis."},
-                    {"term": "Kalman Gain", "definition": "The optimal weighting factor balancing prior state estimates against noisy current sensor measurements."},
-                ],
-                "High-frequency autonomous algorithmic trading infrastructure managing portfolio risk across correlated derivatives under extreme market volatility.",
-                "Derive the conditions under which the system matrix loses Hurwitz stability when parameter alpha exceeds the critical threshold."
+                    "Asymptotic stability requires all characteristic eigenvalues to have negative real parts.",
+                    "Kalman weighting minimizes mean squared error under Gaussian noise.",
+                ]
             ),
         }
 
-        analogy, principles, steps, terms, case_study, exercise = level_map.get(
+        intro, detail, steps, example, apps, rev_points = level_map.get(
             level, level_map["intermediate"]
         )
 
         raw_md = (
-            f"# {concept} ({level.capitalize()} Level)\n\n"
-            f"## Intuitive Analogy\n{analogy}\n\n"
-            "## Foundational Principles\n" + "\n".join([f"- {p}" for p in principles]) + "\n\n"
-            "## Step-by-Step Breakdown\n" + "\n".join([f"### Step {s.step_number}: {s.title}\n{s.description}" for s in steps]) + "\n\n"
-            "## Key Terminology\n" + "\n".join([f"- **{t['term']}**: {t['definition']}" for t in terms]) + "\n\n"
-            f"## Real-World Case Study\n{case_study}\n\n"
-            f"## Self-Check Exercise\n{exercise}\n"
+            f"# Introduction: {concept}\n\n{intro}\n\n"
+            f"## Detailed Explanation ({level.capitalize()} Level)\n\n{detail}\n\n"
+            "## Step-by-Step Understanding\n" + "\n".join([f"### Step {s.step_number}: {s.title}\n{s.description}" for s in steps]) + "\n\n"
+            f"## Practical Example\n\n{example}\n\n"
+            "## Real-World Applications\n" + "\n".join([f"- {a}" for a in apps]) + "\n\n"
+            "## Quick Revision Points\n" + "\n".join([f"- {r}" for r in rev_points]) + "\n"
         )
 
         return ExplainConceptResponse(
             concept=concept,
+            subject=subject,
             level=level,
-            intuitive_analogy=analogy,
-            foundational_principles=principles,
-            step_by_step_breakdown=steps,
-            key_terms=terms,
-            real_world_case=case_study,
-            self_check_exercise=exercise,
+            introduction=intro,
+            detailed_explanation=detail,
+            step_by_step_understanding=steps,
+            practical_example=example,
+            real_world_applications=apps,
+            quick_revision_points=rev_points,
             raw_markdown=raw_md,
         )
 

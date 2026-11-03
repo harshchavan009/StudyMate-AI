@@ -67,21 +67,21 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   getHealth: () => request("/api/health"),
+  getConfig: () => request("/api/config"),
   summarize: (text) => request("/api/summarize", { method: "POST", body: JSON.stringify({ text }) }),
   generateQuiz: (text, difficulty, question_count) =>
     request("/api/quiz", {
       method: "POST",
       body: JSON.stringify({ text, difficulty, question_count }),
     }),
-  improveAnswer: (question, draft_answer) =>
+  improveAnswer: (answer, subject_or_topic = null) =>
     request("/api/improve-answer", {
       method: "POST",
-      body: JSON.stringify({ question, draft_answer }),
+      body: JSON.stringify({ answer, subject_or_topic }),
     }),
-  explainConcept: (concept, level, context = null) =>
+  explainConcept: (concept, level, subject = "Other") =>
     request("/api/explain-concept", {
       method: "POST",
-      body: JSON.stringify({ concept, level, context }),
+      body: JSON.stringify({ concept, level, subject }),
     }),
 };
-

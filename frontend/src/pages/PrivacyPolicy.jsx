@@ -1,6 +1,9 @@
 import { Card } from "@/components/ui/Card";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export function PrivacyPolicy() {
+  usePageMeta("Privacy Policy", "Review StudyMate AI data handling and privacy practices.");
+
   return (
     <div className="max-w-3xl mx-auto py-4 space-y-6">
       <div className="space-y-1">

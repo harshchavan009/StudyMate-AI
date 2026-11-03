@@ -1,6 +1,10 @@
-"""Pydantic request and response schemas for StudyMate AI."""
+"""Pydantic request and response schemas for StudyMate AI.
 
-from typing import List, Optional, Literal
+Enforces strict input validation, length bounds, and exact output section contracts.
+No em dashes are used in schemas, docstrings, or validation errors.
+"""
+
+from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
@@ -11,17 +15,35 @@ class BaseValidatedModel(BaseModel):
 
 
 # ---------------------------------------------------------
-# Summarizer Schemas
+# Shared Configuration Schema
+# ---------------------------------------------------------
+
+class ToolLimits(BaseValidatedModel):
+    min: int
+    max: int
+
+
+class ConfigResponse(BaseValidatedModel):
+    """Shared limits and options contract for frontend and backend alignment."""
+
+    summarizer: ToolLimits
+    quiz: Dict[str, Any]
+    answer_improver: Dict[str, Any]
+    concept_explainer: Dict[str, Any]
+
+
+# ---------------------------------------------------------
+# 1. Summarizer Schemas
 # ---------------------------------------------------------
 
 class SummarizeRequest(BaseValidatedModel):
-    """Request payload for text summarization."""
+    """Request payload for text summarization (20 to 20,000 characters)."""
 
     text: str = Field(
         ...,
         min_length=20,
         max_length=20000,
-        description="The academic or study text to summarize.",
+        description="The study text or lecture notes to summarize.",
     )
 
     @field_validator("text")
@@ -38,25 +60,27 @@ class DefinitionItem(BaseValidatedModel):
     definition: str
 
 
-class BreakdownSection(BaseValidatedModel):
-    title: str
-    points: List[str]
-
-
 class SummarizeResponse(BaseValidatedModel):
-    """Structured 6-section academic summary."""
+    """Structured 6-section academic summary strictly matching spec:
+    1. Topic Overview
+    2. Key Concepts
+    3. Important Definitions
+    4. Important Points
+    5. Exam Preparation Notes
+    6. Quick Revision Summary
+    """
 
-    executive_summary: str
+    topic_overview: str
     key_concepts: List[str]
-    breakdown_sections: List[BreakdownSection]
     important_definitions: List[DefinitionItem]
-    practical_applications: List[str]
-    review_questions: List[str]
+    important_points: List[str]
+    exam_preparation_notes: List[str]
+    quick_revision_summary: str
     raw_markdown: str
 
 
 # ---------------------------------------------------------
-# Quiz Generator Schemas
+# 2. Quiz Generator Schemas
 # ---------------------------------------------------------
 
 class QuizRequest(BaseValidatedModel):
@@ -101,31 +125,33 @@ class QuizResponse(BaseValidatedModel):
 
 
 # ---------------------------------------------------------
-# Answer Improver Schemas
+# 3. Answer Improver Schemas
 # ---------------------------------------------------------
 
 class ImproveAnswerRequest(BaseValidatedModel):
-    """Request payload for diagnostic answer critique and improvement."""
+    """Request payload for improving a student draft answer.
+    Answer: 10 to 5,000 characters.
+    Subject/topic: Optional context up to 200 characters.
+    """
 
-    question: str = Field(
-        ...,
-        min_length=5,
-        max_length=4000,
-        description="The exam prompt or homework question.",
-    )
-    draft_answer: str = Field(
+    answer: str = Field(
         ...,
         min_length=10,
-        max_length=10000,
-        description="The student's original draft answer.",
+        max_length=5000,
+        description="The student original draft answer.",
+    )
+    subject_or_topic: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Optional subject or topic context.",
     )
 
-    @field_validator("question", "draft_answer")
+    @field_validator("answer")
     @classmethod
-    def validate_text_not_empty(cls, v: str) -> str:
+    def validate_answer(cls, v: str) -> str:
         cleaned = v.strip()
-        if len(cleaned) < 5:
-            raise ValueError("Input field must not be blank or trivial.")
+        if len(cleaned) < 10:
+            raise ValueError("Draft answer must contain at least 10 non-whitespace characters.")
         return cleaned
 
 
@@ -136,46 +162,66 @@ class ChangedPhrase(BaseValidatedModel):
 
 
 class ImproveAnswerResponse(BaseValidatedModel):
+    """Structured response strictly matching spec:
+    1. Original Answer Feedback
+    2. Improved Answer
+    3. Key Improvements Made
+    4. Suggestions for Further Improvement
+    """
+
     original_answer: str
+    subject_or_topic: Optional[str] = None
+    original_answer_feedback: str
     improved_answer: str
+    key_improvements_made: List[str]
+    suggestions_for_further_improvement: List[str]
     changed_phrases: List[ChangedPhrase]
-    strengths: List[str]
-    weaknesses: List[str]
-    missing_key_points: List[str]
-    estimated_score_before: int = Field(..., ge=1, le=10)
-    estimated_score_after: int = Field(..., ge=1, le=10)
-    summary_of_changes: str
 
 
 # ---------------------------------------------------------
-# Concept Explainer Schemas
+# 4. Concept Explainer Schemas
 # ---------------------------------------------------------
+
+SUBJECT_CHOICES = [
+    "Computer Science",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Mathematics",
+    "Economics",
+    "History",
+    "Literature",
+    "Other",
+]
 
 class ExplainConceptRequest(BaseValidatedModel):
-    """Request payload for conceptual explanation."""
+    """Request payload for conceptual explanation.
+    Concept: 3 to 300 characters.
+    Subject: Selected category from supported choices.
+    Level: beginner, intermediate, advanced.
+    """
 
     concept: str = Field(
         ...,
-        min_length=2,
-        max_length=500,
-        description="The concept, mechanism, or theory to explain.",
+        min_length=3,
+        max_length=300,
+        description="The concept, mechanism, or theory to explain (3 to 300 characters).",
+    )
+    subject: Optional[str] = Field(
+        default="Other",
+        description="Optional subject domain.",
     )
     level: Literal["beginner", "intermediate", "advanced"] = Field(
         default="intermediate",
         description="Target depth level.",
-    )
-    context: Optional[str] = Field(
-        default=None,
-        max_length=5000,
-        description="Optional additional course or subject context.",
     )
 
     @field_validator("concept")
     @classmethod
     def validate_concept(cls, v: str) -> str:
         cleaned = v.strip()
-        if len(cleaned) < 2:
-            raise ValueError("Concept name is too short.")
+        if len(cleaned) < 3:
+            raise ValueError("Concept name must contain at least 3 non-whitespace characters.")
         return cleaned
 
 
@@ -186,14 +232,24 @@ class ExplanationStep(BaseValidatedModel):
 
 
 class ExplainConceptResponse(BaseValidatedModel):
+    """Structured 6-section conceptual explanation strictly matching spec:
+    1. Introduction
+    2. Detailed Explanation
+    3. Step-by-Step Understanding
+    4. Practical Example
+    5. Real-World Applications
+    6. Quick Revision Points
+    """
+
     concept: str
+    subject: str
     level: str
-    intuitive_analogy: str
-    foundational_principles: List[str]
-    step_by_step_breakdown: List[ExplanationStep]
-    key_terms: List[DefinitionItem]
-    real_world_case: str
-    self_check_exercise: str
+    introduction: str
+    detailed_explanation: str
+    step_by_step_understanding: List[ExplanationStep]
+    practical_example: str
+    real_world_applications: List[str]
+    quick_revision_points: List[str]
     raw_markdown: str
 
 
@@ -206,4 +262,3 @@ class HealthResponse(BaseValidatedModel):
     environment: str
     gemini_configured: bool
     version: str
-

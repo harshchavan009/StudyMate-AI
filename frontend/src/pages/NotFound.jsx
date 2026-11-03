@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Home, BookOpen, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export function NotFound() {
+  usePageMeta("Page Not Found", "The requested study resource or tool does not exist.");
+
   return (
     <div className="max-w-md mx-auto py-16 text-center space-y-6">
       <div className="space-y-2">

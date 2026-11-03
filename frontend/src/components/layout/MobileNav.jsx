@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 
 const MOBILE_NAV_ITEMS = [
   { path: "/", label: "Home", icon: Home },
-  { path: "/summarizer", label: "Summary", icon: BookOpen },
+  { path: "/summarizer", label: "Summarizer", icon: BookOpen },
   { path: "/quiz", label: "Quiz", icon: HelpCircle },
-  { path: "/answer-improver", label: "Improve", icon: PenLine },
-  { path: "/concept-explainer", label: "Explain", icon: Lightbulb },
+  { path: "/answer-improver", label: "Improver", icon: PenLine },
+  { path: "/concept-explainer", label: "Explainer", icon: Lightbulb },
 ];
 
 export function MobileNav() {
@@ -21,7 +21,7 @@ export function MobileNav() {
     >
       <AnimatedBackground
         defaultValue={location.pathname}
-        className="bg-brand-tint rounded-[6px] border border-brand/10"
+        className="bg-brand-tint rounded-md"
         transition={{ type: "tween", ease: "easeOut", duration: 0.18 }}
       >
         {MOBILE_NAV_ITEMS.map((item) => {
@@ -34,11 +34,11 @@ export function MobileNav() {
               data-id={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center py-1.5 px-3 rounded-md transition-colors",
+                "flex flex-col items-center justify-center py-1 px-2.5 rounded-md transition-colors",
                 isActive ? "text-brand font-semibold" : "text-ink-secondary"
               )}
             >
-              <Icon className="w-4 h-4 mb-1" strokeWidth={isActive ? 2 : 1.75} />
+              <Icon className="w-4 h-4 mb-0.5" strokeWidth={1.75} />
               <span className="text-[10px] tracking-tight">{item.label}</span>
             </NavLink>
           );
@@ -47,4 +47,3 @@ export function MobileNav() {
     </nav>
   );
 }
-

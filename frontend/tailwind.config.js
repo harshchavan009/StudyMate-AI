@@ -34,10 +34,17 @@ export default {
           warning: "#8A5A00",
           "warning-bg": "#FEF8EC",
         },
+        neutral: {
+          disabled: "#E5E5DF",
+          "disabled-text": "#7E8695",
+        },
       },
       fontFamily: {
-        serif: ["Newsreader", "Source Serif 4", "Georgia", "serif"],
+        serif: ['"Source Serif 4"', "Georgia", "serif"],
         sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+      },
+      maxWidth: {
+        prose: "70ch",
       },
       borderRadius: {
         DEFAULT: "6px",
@@ -52,4 +59,3 @@ export default {
   },
   plugins: [],
 };
-

@@ -1,6 +1,9 @@
 import { Card } from "@/components/ui/Card";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export function Terms() {
+  usePageMeta("Terms and Conditions", "Review the terms and conditions governing use of StudyMate AI.");
+
   return (
     <div className="max-w-3xl mx-auto py-4 space-y-6">
       <div className="space-y-1">

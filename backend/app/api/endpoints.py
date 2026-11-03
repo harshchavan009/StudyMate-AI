@@ -1,11 +1,14 @@
-"""API endpoints for StudyMate AI."""
+"""API endpoints for StudyMate AI study tools."""
 
 import logging
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from app.config import settings
 from app.api.rate_limit import limiter
 from app.schemas import (
     HealthResponse,
+    ConfigResponse,
+    ToolLimits,
+    SUBJECT_CHOICES,
     SummarizeRequest,
     SummarizeResponse,
     QuizRequest,
@@ -29,6 +32,31 @@ def health_check():
         environment=settings.ENVIRONMENT,
         gemini_configured=bool(settings.GEMINI_API_KEY),
         version="1.0.0",
+    )
+
+
+@router.get("/config", response_model=ConfigResponse)
+def get_tool_configuration():
+    """Shared single source of truth for input limits and tool settings."""
+    return ConfigResponse(
+        summarizer=ToolLimits(min=20, max=20000),
+        quiz={
+            "min": 20,
+            "max": 20000,
+            "counts": [5, 10, 15],
+            "difficulties": ["easy", "medium", "hard"],
+        },
+        answer_improver={
+            "min": 10,
+            "max": 5000,
+            "subject_max": 200,
+        },
+        concept_explainer={
+            "min": 3,
+            "max": 300,
+            "levels": ["beginner", "intermediate", "advanced"],
+            "subjects": SUBJECT_CHOICES,
+        },
     )
 
 
@@ -71,11 +99,11 @@ def generate_quiz(request: Request, payload: QuizRequest):
 @router.post("/improve-answer", response_model=ImproveAnswerResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_ENDPOINTS)
 def improve_answer(request: Request, payload: ImproveAnswerRequest):
-    """Provide diagnostic critique and improved academic revision."""
+    """Provide feedback, improved answer, key improvements, and suggestions."""
     try:
         return gemini_service.improve_answer(
-            question=payload.question,
-            draft_answer=payload.draft_answer,
+            answer=payload.answer,
+            subject_or_topic=payload.subject_or_topic,
         )
     except HTTPException:
         raise
@@ -90,12 +118,12 @@ def improve_answer(request: Request, payload: ImproveAnswerRequest):
 @router.post("/explain-concept", response_model=ExplainConceptResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_ENDPOINTS)
 def explain_concept(request: Request, payload: ExplainConceptRequest):
-    """Generate conceptual explanation calibrated by academic level."""
+    """Generate 6-section conceptual explanation calibrated by academic level."""
     try:
         return gemini_service.explain_concept(
             concept=payload.concept,
             level=payload.level,
-            context=payload.context,
+            subject=payload.subject or "Other",
         )
     except HTTPException:
         raise
@@ -105,4 +133,3 @@ def explain_concept(request: Request, payload: ExplainConceptRequest):
             status_code=500,
             detail="A processing error occurred while generating the explanation. Please try again.",
         )
-

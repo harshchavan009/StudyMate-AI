@@ -4,13 +4,13 @@ import { MotionConfig } from "motion/react";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { Footer } from "./Footer";
-import { Menu, ShieldCheck } from "lucide-react";
+import { Menu, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 
-const ROUTE_TITLES = {
+const BREADCRUMB_NAMES = {
   "/": "Overview",
-  "/summarizer": "Academic Summarizer",
-  "/quiz": "Practice Quiz Generator",
+  "/summarizer": "Summarizer",
+  "/quiz": "Quiz Generator",
   "/answer-improver": "Answer Improver",
   "/concept-explainer": "Concept Explainer",
   "/privacy": "Privacy Policy",
@@ -19,31 +19,47 @@ const ROUTE_TITLES = {
 
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [apiOnline, setApiOnline] = useState(null);
+  // Three states: 'checking' | 'online' | 'unreachable'
+  const [healthState, setHealthState] = useState("checking");
   const location = useLocation();
 
   useEffect(() => {
-    // Check backend health quietly on initial mount
-    api.getHealth()
-      .then((res) => setApiOnline(res.status === "healthy"))
-      .catch(() => setApiOnline(false));
+    let isMounted = true;
+
+    const checkHealth = () => {
+      api.getHealth()
+        .then((res) => {
+          if (isMounted) {
+            setHealthState(res.status === "healthy" ? "online" : "unreachable");
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setHealthState("unreachable");
+          }
+        });
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  const currentTitle = ROUTE_TITLES[location.pathname] || "StudyMate AI";
+  const currentToolName = BREADCRUMB_NAMES[location.pathname] || "Page";
 
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen bg-canvas text-ink flex flex-col font-sans antialiased selection:bg-brand-tint selection:text-brand">
         <div className="flex-1 flex overflow-hidden">
-          {/* Desktop & Tablet Sidebar */}
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+          {/* Desktop & Tablet Left Sidebar */}
+          <Sidebar collapsed={sidebarCollapsed} />
 
-          {/* Main Area */}
+          {/* Main Content Column */}
           <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
-            {/* Top Bar */}
+            {/* Top Bar with Minimal Breadcrumb and Real Health Indicator */}
             <header className="h-14 border-b border-ink-border bg-white px-4 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
               <div className="flex items-center gap-3">
                 <button
@@ -52,43 +68,51 @@ export function AppShell() {
                   className="hidden md:flex p-1.5 rounded-md hover:bg-black/5 text-ink-secondary hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
-                  <Menu className="w-4 h-4" />
+                  <Menu className="w-4 h-4" strokeWidth={1.75} />
                 </button>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-serif font-medium text-sm sm:text-base text-ink tracking-tight">
-                    {currentTitle}
-                  </h1>
-                </div>
+
+                {/* Minimal Breadcrumb */}
+                <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-ink-secondary">
+                  <Link to="/" className="hover:text-ink transition-colors">
+                    Home
+                  </Link>
+                  {location.pathname !== "/" && (
+                    <>
+                      <ChevronRight className="w-3.5 h-3.5 text-ink-subtle" strokeWidth={1.75} />
+                      <span className="text-ink font-medium">{currentToolName}</span>
+                    </>
+                  )}
+                </nav>
               </div>
 
-              {/* Status Indicator */}
-              <div className="flex items-center gap-3">
+              {/* Real 3-State Backend Health Indicator */}
+              <div className="flex items-center">
                 <div
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border"
-                  title={apiOnline ? "Backend connected" : "Backend offline or mock mode active"}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-ink-border bg-[#FAF9F6]"
+                  title={`Backend service: ${healthState}`}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      apiOnline === true
+                      healthState === "online"
                         ? "bg-feedback-success"
-                        : apiOnline === false
-                        ? "bg-feedback-warning"
-                        : "bg-ink-subtle"
+                        : healthState === "checking"
+                        ? "bg-[#D3D2CA] animate-pulse"
+                        : "bg-feedback-warning"
                     }`}
                   />
-                  <span className="text-ink-secondary text-[10px]">
-                    {apiOnline === true
-                      ? "System Online"
-                      : apiOnline === false
-                      ? "Local Engine"
-                      : "Connecting"}
+                  <span className="text-ink-secondary capitalize">
+                    {healthState === "online"
+                      ? "Online"
+                      : healthState === "checking"
+                      ? "Checking"
+                      : "Unreachable"}
                   </span>
                 </div>
               </div>
             </header>
 
-            {/* Scrollable Page Content */}
-            <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-6xl w-full mx-auto">
+            {/* Scrollable Page Content - Consistent Max Width on every page */}
+            <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 max-w-7xl w-full mx-auto">
               <Outlet />
             </main>
 
@@ -97,10 +121,9 @@ export function AppShell() {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Bottom Navigation */}
         <MobileNav />
       </div>
     </MotionConfig>
   );
 }
-

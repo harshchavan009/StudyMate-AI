@@ -16,6 +16,21 @@ def test_health_check(client: TestClient):
     assert data["version"] == "1.0.0"
 
 
+def test_config_endpoint(client: TestClient):
+    """Verify shared configuration endpoint returns correct input limits."""
+    response = client.get("/api/config")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["summarizer"]["min"] == 20
+    assert data["summarizer"]["max"] == 20000
+    assert data["quiz"]["counts"] == [5, 10, 15]
+    assert data["answer_improver"]["min"] == 10
+    assert data["answer_improver"]["max"] == 5000
+    assert data["concept_explainer"]["min"] == 3
+    assert data["concept_explainer"]["max"] == 300
+    assert "Computer Science" in data["concept_explainer"]["subjects"]
+
+
 def test_security_headers_present(client: TestClient):
     """Verify security headers are attached to responses."""
     response = client.get("/api/health")
@@ -64,30 +79,35 @@ def test_quiz_rejects_invalid_difficulty(client: TestClient):
     assert response.status_code == 422
 
 
-def test_improver_rejects_empty_inputs(client: TestClient):
-    """Answer improver must validate non-empty question and draft answer."""
+def test_improver_rejects_too_short_answer(client: TestClient):
+    """Answer improver must validate answer is at least 10 characters."""
     response = client.post(
         "/api/improve-answer",
-        json={"question": "   ", "draft_answer": "Too short"},
+        json={"answer": "Short"},
     )
     assert response.status_code == 422
 
 
-def test_explainer_rejects_invalid_level(client: TestClient):
-    """Concept explainer must only accept beginner, intermediate, or advanced."""
-    response = client.post(
-        "/api/explain-concept",
-        json={"concept": "Entropy", "level": "master"},
-    )
-    assert response.status_code == 422
+def test_explainer_rejects_short_concept_and_invalid_level(client: TestClient):
+    """Concept explainer must validate concept length (min 3) and valid level."""
+    # Too short
+    res1 = client.post("/api/explain-concept", json={"concept": "AI", "level": "beginner"})
+    assert res1.status_code == 422
+
+    # Invalid level
+    res2 = client.post("/api/explain-concept", json={"concept": "Entropy", "level": "master"})
+    assert res2.status_code == 422
 
 
 # ---------------------------------------------------------
 # Tool Execution Tests (Mock/Fallback Mode)
 # ---------------------------------------------------------
 
-def test_summarizer_generates_six_sections(client: TestClient):
-    """Verify summarizer produces all 6 required academic sections."""
+def test_summarizer_generates_six_exact_sections(client: TestClient):
+    """Verify summarizer produces exactly the 6 required spec sections:
+    Topic Overview, Key Concepts, Important Definitions, Important Points,
+    Exam Preparation Notes, Quick Revision Summary.
+    """
     sample_text = (
         "Operating systems manage hardware resources through abstraction layers. "
         "The kernel serves as the central control module, arbitrating memory allocation, "
@@ -97,23 +117,33 @@ def test_summarizer_generates_six_sections(client: TestClient):
     assert response.status_code == 200
     data = response.json()
 
-    # Section 1: Executive Summary
-    assert len(data["executive_summary"]) > 10
+    # Section 1: Topic Overview
+    assert "topic_overview" in data
+    assert len(data["topic_overview"]) > 10
+
     # Section 2: Key Concepts
+    assert "key_concepts" in data
     assert len(data["key_concepts"]) >= 3
-    # Section 3: Breakdown Sections
-    assert len(data["breakdown_sections"]) >= 1
-    assert "title" in data["breakdown_sections"][0]
-    assert len(data["breakdown_sections"][0]["points"]) >= 1
-    # Section 4: Important Definitions
+
+    # Section 3: Important Definitions
+    assert "important_definitions" in data
     assert len(data["important_definitions"]) >= 1
     assert "term" in data["important_definitions"][0]
-    # Section 5: Practical Applications
-    assert len(data["practical_applications"]) >= 1
-    # Section 6: Review Questions
-    assert len(data["review_questions"]) >= 1
-    # Markdown output exists
-    assert "## Executive Summary" in data["raw_markdown"]
+
+    # Section 4: Important Points
+    assert "important_points" in data
+    assert len(data["important_points"]) >= 1
+
+    # Section 5: Exam Preparation Notes
+    assert "exam_preparation_notes" in data
+    assert len(data["exam_preparation_notes"]) >= 1
+
+    # Section 6: Quick Revision Summary
+    assert "quick_revision_summary" in data
+    assert len(data["quick_revision_summary"]) > 10
+
+    # Markdown export
+    assert "# Topic Overview" in data["raw_markdown"]
 
 
 def test_quiz_generates_requested_count_and_schema(client: TestClient):
@@ -122,7 +152,7 @@ def test_quiz_generates_requested_count_and_schema(client: TestClient):
         "Mitochondria generate most of the chemical energy needed to power the biochemical "
         "reactions in cells. This chemical energy is stored in adenosine triphosphate (ATP)."
     )
-    for requested_count in [5, 10]:
+    for requested_count in [5, 10, 15]:
         response = client.post(
             "/api/quiz",
             json={
@@ -143,46 +173,50 @@ def test_quiz_generates_requested_count_and_schema(client: TestClient):
             assert len(q["explanation"]) > 10
 
 
-def test_improver_generates_diagnostic_breakdown(client: TestClient):
-    """Verify answer improver generates critique, diff phrases, and score progression."""
-    question = "Explain how TCP guarantees reliable transmission over unreliable IP networks."
+def test_improver_generates_exact_spec_sections(client: TestClient):
+    """Verify answer improver generates:
+    Original Answer Feedback, Improved Answer, Key Improvements Made,
+    Suggestions for Further Improvement.
+    """
     draft = "TCP sends packets and uses acknowledgments. If something is lost it sends it again quickly."
-
     response = client.post(
         "/api/improve-answer",
-        json={"question": question, "draft_answer": draft},
+        json={"answer": draft, "subject_or_topic": "Computer Networking"},
     )
     assert response.status_code == 200
     data = response.json()
 
+    assert data["original_answer"] == draft
+    assert data["subject_or_topic"] == "Computer Networking"
+    assert len(data["original_answer_feedback"]) > 10
     assert len(data["improved_answer"]) > len(draft)
-    assert data["estimated_score_after"] >= data["estimated_score_before"]
+    assert len(data["key_improvements_made"]) >= 1
+    assert len(data["suggestions_for_further_improvement"]) >= 1
     assert len(data["changed_phrases"]) >= 1
-    assert "original_phrase" in data["changed_phrases"][0]
-    assert "improved_phrase" in data["changed_phrases"][0]
-    assert len(data["strengths"]) >= 1
-    assert len(data["weaknesses"]) >= 1
-    assert len(data["missing_key_points"]) >= 1
 
 
-def test_explainer_calibrates_by_level(client: TestClient):
-    """Verify concept explainer returns level-calibrated structural breakdown."""
+def test_explainer_calibrates_by_level_with_exact_sections(client: TestClient):
+    """Verify concept explainer returns exact 6 sections:
+    Introduction, Detailed Explanation, Step-by-Step Understanding,
+    Practical Example, Real-World Applications, Quick Revision Points.
+    """
     levels = ["beginner", "intermediate", "advanced"]
     for lvl in levels:
         response = client.post(
             "/api/explain-concept",
-            json={"concept": "Recursion", "level": lvl},
+            json={"concept": "Recursion", "level": lvl, "subject": "Computer Science"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["concept"] == "Recursion"
+        assert data["subject"] == "Computer Science"
         assert data["level"] == lvl
-        assert len(data["intuitive_analogy"]) > 10
-        assert len(data["foundational_principles"]) >= 2
-        assert len(data["step_by_step_breakdown"]) >= 3
-        assert len(data["key_terms"]) >= 1
-        assert len(data["real_world_case"]) > 10
-        assert len(data["self_check_exercise"]) > 10
+        assert len(data["introduction"]) > 10
+        assert len(data["detailed_explanation"]) > 10
+        assert len(data["step_by_step_understanding"]) >= 3
+        assert len(data["practical_example"]) > 10
+        assert len(data["real_world_applications"]) >= 1
+        assert len(data["quick_revision_points"]) >= 1
 
 
 # ---------------------------------------------------------

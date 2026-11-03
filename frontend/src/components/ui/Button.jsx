@@ -15,11 +15,11 @@ export const Button = forwardRef(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors duration-150 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none";
+      "inline-flex items-center justify-center font-medium transition-colors duration-150 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:bg-[#E5E5DF] disabled:text-[#7E8695] disabled:border-transparent disabled:cursor-not-allowed disabled:shadow-none select-none";
 
     const variants = {
       primary:
-        "bg-brand text-white hover:bg-brand-hover active:bg-brand-active border border-transparent",
+        "bg-brand text-white hover:bg-brand-hover active:bg-brand-active border border-transparent shadow-sm",
       secondary:
         "bg-white text-ink border border-ink-border hover:border-ink-border-hover hover:bg-black/[0.01] active:bg-black/[0.03]",
       subtle:
@@ -49,4 +49,3 @@ export const Button = forwardRef(
 );
 
 Button.displayName = "Button";
-
