@@ -37,7 +37,7 @@ export function Sidebar({ collapsed }) {
       </div>
 
       {/* Navigation Links with AnimatedBackground */}
-      <div className="flex-1 py-4 px-2 space-y-1">
+      <div className="flex-1 py-4 px-3 space-y-1">
         <div className="px-3 pb-2">
           {!collapsed && (
             <span className="text-[11px] font-medium tracking-wider text-ink-subtle uppercase">
@@ -61,7 +61,7 @@ export function Sidebar({ collapsed }) {
                 data-id={item.path}
                 to={item.path}
                 className={cn(
-                  "w-full h-9 flex items-center gap-3 px-3 text-xs font-medium rounded-md transition-colors",
+                  "w-full h-10 flex items-center justify-start text-left gap-3 px-4 text-xs font-medium rounded-md transition-colors",
                   isActive
                     ? "text-brand font-semibold"
                     : "text-ink-secondary hover:text-ink"
