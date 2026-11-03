@@ -227,7 +227,7 @@ export function Summarizer() {
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
-            variant="ghost"
+            variant="subtle"
             size="sm"
             onClick={handleClear}
             disabled={status === "loading" || !text}

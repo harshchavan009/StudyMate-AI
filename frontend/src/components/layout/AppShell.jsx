@@ -149,7 +149,7 @@ export function AppShell() {
               </div>
             </header>
 
-            {/* Progressive Blur primitive at sticky top bar edge (M7) */}
+            {/* Progressive Blur edge at sticky top bar edge (M7) */}
             <ProgressiveBlur direction="bottom" />
           </div>
 

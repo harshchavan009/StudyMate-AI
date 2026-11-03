@@ -118,7 +118,7 @@ def improve_answer(request: Request, payload: ImproveAnswerRequest):
 @router.post("/explain-concept", response_model=ExplainConceptResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_ENDPOINTS)
 def explain_concept(request: Request, payload: ExplainConceptRequest):
-    """Generate 6-section conceptual explanation calibrated by academic level."""
+    """Generate 6-section conceptual explanation tailored by academic level."""
     try:
         return gemini_service.explain_concept(
             concept=payload.concept,

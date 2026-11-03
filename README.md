@@ -2,14 +2,14 @@
 
 StudyMate AI turns unorganized notes, lectures, and draft responses into structured summaries, active-recall quizzes, phrase-level answer improvements, and clear concept breakdowns.
 
-Built with React 18, Tailwind CSS, Motion Primitives, and a FastAPI backend powered by the Google Gemini API.
+Built with React 18, Tailwind CSS, Motion components, and a FastAPI backend powered by the Google Gemini API.
 
 ---
 
 ## Key Features
 
 1. **Academic Summarizer**:
-   - Synthesizes raw lecture notes into 6 exact sections: Topic Overview, Key Concepts, Important Definitions, Important Points, Exam Preparation Notes, and Quick Revision Summary.
+   - Organizes raw lecture notes into 6 exact sections: Topic Overview, Key Concepts, Important Definitions, Important Points, Exam Preparation Notes, and Quick Revision Summary.
    - Responsive split-view layout at 1280px and wider, stacked layout below 1280px.
    - Skeletons mirror output structure during generation.
    - Sequential top-to-bottom entrance using AnimatedGroup.
@@ -17,9 +17,9 @@ Built with React 18, Tailwind CSS, Motion Primitives, and a FastAPI backend powe
    - Single-click markdown export.
 
 2. **Practice Quiz Generator**:
-   - Multiple choice questions calibrated across three difficulty levels: Easy, Medium, and Hard.
+   - Multiple choice questions across three difficulty levels: Easy, Medium, and Hard.
    - Selectable question count (5, 10, or 15 questions).
-   - Real-time progress rail advancing per question.
+   - Progress tracker advancing per question.
    - Directional question slide transitions via TransitionPanel.
    - Instant visual answer validation with expandable pedagogical explanations via Disclosure.
    - Final score animated count-up with per-question review breakdown.
@@ -62,8 +62,8 @@ Built with React 18, Tailwind CSS, Motion Primitives, and a FastAPI backend powe
 - **Icons**: Lucide icons only with consistent 1.75px stroke width. Emoji are never used as icons.
 - **App Shell**: Unified `max-w-7xl` container so headings never shift between pages. Minimal top bar with breadcrumbs and a real three-state `/api/health` badge (`checking`, `online`, `unreachable`).
 - **Single Source of Truth Config**: Input limits read directly from `GET /api/config` so the frontend and backend validation never disagree.
-- **Motion System**: Built on Motion Primitives (`AnimatedBackground`, `AnimatedGroup`, `TransitionPanel`, `Disclosure`). All animations are wrapped in `MotionConfig` with `reducedMotion="user"` so users with reduced motion preferences receive immediate, non-animated state changes.
-- **Zero Em Dashes**: Clean editorial punctuation using commas, periods, or colons across all UI copy, docs, and comments.
+- **Motion System**: Built on Motion components (`AnimatedBackground`, `AnimatedGroup`, `TransitionPanel`, `Disclosure`). All animations are wrapped in `MotionConfig` with `reducedMotion="user"` so users with reduced motion preferences receive immediate, non-animated state changes.
+- **Zero Em Dashes**: Clean punctuation using commas, periods, or colons across all UI copy, docs, and comments.
 
 ---
 
@@ -98,7 +98,7 @@ StudyMate AI/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── layout/          # AppShell, Sidebar, MobileNav, Footer
-│   │   │   ├── motion/          # Pure JSX Motion Primitives
+│   │   │   ├── motion/          # Pure JSX motion components
 │   │   │   ├── ui/              # Button, Card, SegmentedControl, Textarea, Alert, SkeletonBlock
 │   │   │   └── tools/           # DiffHighlighter, ScoreCounter
 │   │   ├── lib/
@@ -113,11 +113,11 @@ StudyMate AI/
 │   ├── .env.example
 │   ├── jsconfig.json            # Path alias configuration (@)
 │   ├── package.json             # Pinned frontend dependencies
-│   ├── tailwind.config.js       # Design tokens configuration
+│   ├── tailwind.config.js       # Styling configuration
 │   ├── vercel.json              # Vercel rewrites and security headers
 │   └── vite.config.js           # Vite build configuration
 ├── LAUNCH.md                    # Production launch readiness checklist
-├── SECURITY_AUDIT.md            # Verified 13-point security review report
+├── SECURITY_AUDIT.md            # Completed 13-point security review report
 └── README.md
 ```
 
@@ -181,9 +181,9 @@ All 16 test cases cover:
 - Central config endpoint (`/api/config`) limits verification.
 - Pydantic input length, format, and type validations.
 - 6-section academic summarizer structure.
-- Calibrated multiple choice quiz generation.
+- Multiple choice quiz generation.
 - Answer improver 4-section breakdown, DiffHighlighter phrases, and fact retention.
-- Concept explainer 6-section breakdown and multi-level calibration.
+- Concept explainer 6-section breakdown and multi-level depth.
 - Em dash substitution and JSON sanitization.
 - SlowAPI IP-based rate limiting (429 response verification).
 

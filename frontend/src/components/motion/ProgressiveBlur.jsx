@@ -2,7 +2,7 @@ import { useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /**
- * ProgressiveBlur: Layered blur primitive (M7).
+ * ProgressiveBlur: Layered blur edge (M7).
  * Allowed only in two places:
  * 1. Sticky top bar edge while content scrolls beneath it.
  * 2. Bottom edge of a scrolling output panel.

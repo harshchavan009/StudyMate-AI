@@ -12,9 +12,9 @@ const TEXT_SIZES = [
 ];
 
 /**
- * ResultPanel: Unified document sheet container across all study tools.
+ * ResultPanel: Unified document container across all study tools.
  * Supports:
- * - Empty document preview sheet with ghost headings (B5)
+ * - Empty preview with placeholder headings (B5)
  * - Loading skeleton with Stop button (C4) and waking up alert if >8s (C5)
  * - Reading comfort text size controls S/M/L (C10)
  * - Result actions: Copy as Markdown with aria-live, Download .md, Print/PDF (C1)
@@ -126,23 +126,23 @@ export function ResultPanel({
         </Alert>
       )}
 
-      {/* Empty State: Document Sheet with Ghost Headings (B5) */}
+      {/* Empty State: What you will get */}
       {(status === "empty" || status === "initial") && (
         <Card className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel">
           <div className="space-y-1 pb-4 border-b border-ink-border">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
-                Document Preview Sheet
+              <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
+                What you will get
               </span>
-              <span className="text-[11px] text-ink-subtle">
+              <span className="text-xs text-ink-subtle">
                 {sections.length} sections
               </span>
             </div>
             <h3 className="font-serif text-lg font-medium text-ink">
-              Expected Output Structure
+              What you will get
             </h3>
             <p className="text-xs text-ink-secondary">
-              Generated results will populate this document in real time across the following structured sections:
+              Your result will appear here across the following structured sections:
             </p>
           </div>
 
@@ -150,7 +150,7 @@ export function ResultPanel({
             {sections.map((section, idx) => (
               <div key={idx} className="space-y-1.5 opacity-60">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-mono text-ink-subtle font-medium">
+                  <span className="text-xs font-sans tabular-nums text-ink-subtle font-medium">
                     0{idx + 1}.
                   </span>
                   <h4 className="font-serif text-sm font-medium text-ink">
@@ -166,7 +166,7 @@ export function ResultPanel({
         </Card>
       )}
 
-      {/* Loading State: Sheet with skeletons, Stop button (C4), and Waking Server Notice (C5) */}
+      {/* Loading State: Skeletons, Stop button (C4), and Waking Server Notice (C5) */}
       {status === "loading" && (
         <Card
           className="p-6 sm:p-8 space-y-6 bg-surface border border-ink-border rounded-panel"
@@ -296,7 +296,7 @@ export function ResultPanel({
 
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="subtle"
                     size="sm"
                     onClick={handleDownload}
                     title="Download document as Markdown (.md)"
@@ -307,7 +307,7 @@ export function ResultPanel({
 
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="subtle"
                     size="sm"
                     onClick={handlePrint}
                     title="Print or Save as PDF"

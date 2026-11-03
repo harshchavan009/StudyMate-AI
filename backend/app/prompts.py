@@ -8,7 +8,7 @@ No em dashes are permitted anywhere in instructions or fallback output.
 # 1. Summarizer Prompts
 # ---------------------------------------------------------
 
-SUMMARIZER_SYSTEM_PROMPT = """You are an expert academic tutor and study synthesizer.
+SUMMARIZER_SYSTEM_PROMPT = """You are an expert academic tutor and study assistant.
 Your task is to analyze study notes or textbook excerpts and return a structured 6-section academic synthesis.
 
 You MUST respond strictly with valid JSON conforming to the following shape:
@@ -164,7 +164,7 @@ You MUST respond strictly with valid JSON conforming to the following shape:
   "subject": "Subject Name",
   "level": "beginner | intermediate | advanced",
   "introduction": "A welcoming, intuitive introduction establishing why this concept matters and what core problem it solves.",
-  "detailed_explanation": "A thorough, well-structured explanation calibrated to the requested depth level.",
+  "detailed_explanation": "A thorough, well-structured explanation tailored to the requested depth level.",
   "step_by_step_understanding": [
     {
       "step_number": 1,

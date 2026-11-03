@@ -263,7 +263,7 @@ export function ConceptExplainer() {
     fetchExplanation(selectedLevel, true);
   };
 
-  // C8: Switching level shows cached result instantly, or an empty sheet with a "Generate this level" button.
+  // C8: Switching level shows cached result instantly, or an empty panel with a "Generate this level" button.
   // Never silently discard a result.
   const handleLevelChange = (newLevel) => {
     setSelectedLevel(newLevel);
@@ -378,7 +378,7 @@ export function ConceptExplainer() {
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
-            variant="ghost"
+            variant="subtle"
             size="sm"
             onClick={handleClear}
             disabled={status === "loading" || (!concept && subject === "Not specified")}
@@ -595,7 +595,7 @@ export function ConceptExplainer() {
   return (
     <ToolLayout
       title="Concept Explainer"
-      description="Enter any concept or theory to generate an intuitive, step-by-step academic breakdown calibrated to your level."
+      description="Enter any concept or theory to generate an intuitive, step-by-step academic breakdown for your level."
       inputPanel={inputPanel}
       resultPanel={resultPanel}
     />

@@ -33,7 +33,7 @@ const TOOLS_INDEX = [
     num: "04",
     path: "/concept-explainer",
     title: "Concept Explainer",
-    description: "Break down difficult theories and mechanisms into step-by-step guides calibrated across beginner, intermediate, and advanced levels.",
+    description: "Break down difficult theories and mechanisms into step-by-step guides for beginner, intermediate, and advanced levels.",
   },
 ];
 
@@ -127,7 +127,7 @@ export function Home() {
 
         {hasHistory && (
           <Button
-            variant="ghost"
+            variant="subtle"
             size="sm"
             onClick={handleClearHistory}
             className="text-ink-subtle hover:text-feedback-error"
@@ -186,7 +186,7 @@ export function Home() {
           How It Works
         </h2>
         <p className="text-xs text-ink-secondary">
-          Raw study material is synthesized into verified, structured academic documents.
+          Turn raw study material into structured academic study documents.
         </p>
       </div>
 
@@ -204,7 +204,7 @@ export function Home() {
             Paste notes or enter a topic
           </h3>
           <p className="text-xs text-ink-secondary leading-relaxed">
-            Provide your raw study notes, draft answer, or target concept. Character limits are validated live.
+            Provide your raw study notes, draft answer, or target concept.
           </p>
         </div>
 
@@ -228,7 +228,7 @@ export function Home() {
             Review, practice, and copy
           </h3>
           <p className="text-xs text-ink-secondary leading-relaxed">
-            Read clean documents, take interactive quizzes, or export formatted markdown with a single click.
+            Study your structured output, test yourself on key points, or export formatted Markdown notes.
           </p>
         </div>
       </div>
@@ -248,10 +248,10 @@ export function Home() {
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-4">
             <h1 className="home-headline">
-              Paste your notes. Get a summary, a practice quiz, a clearer answer, or a plain explanation.
+              Paste your notes. Start studying.
             </h1>
             <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-xl">
-              StudyMate AI turns unorganized notes, lectures, and draft responses into structured summaries, active-recall quizzes, phrase-level answer improvements, and clear concept breakdowns.
+              Turn lecture notes, readings, and drafts into structured summaries, active-recall quizzes, sentence improvements, and concept explanations.
             </p>
           </div>
 
@@ -278,98 +278,52 @@ export function Home() {
         </div>
       </section>
 
-      {/* Dynamic Section Ordering based on User History (B4) */}
-      {hasHistory ? (
-        <>
-          {recentSessionsSection}
-          {/* Editorial Tool Index (B4) */}
-          <section id="tools-index" className="space-y-4 pt-6 border-t border-ink-border">
-            <div className="space-y-1">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
-                Directory
-              </span>
-              <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
-                Editorial Tool Index
-              </h2>
-            </div>
+      {/* Tools Section */}
+      <section id="tools-index" className="space-y-4 pt-6 border-t border-ink-border">
+        <div className="space-y-1">
+          <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
+            Tools
+          </span>
+          <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
+            Tools
+          </h2>
+        </div>
 
-            <div className="divide-y divide-ink-border border-y border-ink-border">
-              {TOOLS_INDEX.map((tool) => (
-                <Link
-                  key={tool.path}
-                  to={tool.path}
-                  className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
-                >
-                  <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
-                    <span className="font-mono text-sm text-ink-subtle shrink-0">
-                      {tool.num}
-                    </span>
-                    <div className="space-y-1">
-                      <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
-                        {tool.title}
-                      </h3>
-                      <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
-                        {tool.description}
-                      </p>
-                    </div>
-                  </div>
+        <div className="divide-y divide-ink-border border-y border-ink-border">
+          {TOOLS_INDEX.map((tool) => (
+            <Link
+              key={tool.path}
+              to={tool.path}
+              className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
+            >
+              <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
+                <span className="font-mono text-sm text-ink-subtle shrink-0">
+                  {tool.num}
+                </span>
+                <div className="space-y-1">
+                  <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
+                    {tool.title}
+                  </h3>
+                  <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
+                    {tool.description}
+                  </p>
+                </div>
+              </div>
 
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
-                    <span>Open</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-          {howItWorksSection}
-        </>
-      ) : (
-        <>
-          {howItWorksSection}
-          {/* Editorial Tool Index (B4) */}
-          <section id="tools-index" className="space-y-4 pt-6 border-t border-ink-border">
-            <div className="space-y-1">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-ink-subtle">
-                Directory
-              </span>
-              <h2 className="font-serif text-xl sm:text-2xl font-medium text-ink tracking-tight">
-                Editorial Tool Index
-              </h2>
-            </div>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
+                <span>Open</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-            <div className="divide-y divide-ink-border border-y border-ink-border">
-              {TOOLS_INDEX.map((tool) => (
-                <Link
-                  key={tool.path}
-                  to={tool.path}
-                  className="py-6 px-3 flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 group hover:bg-[#F3F1EC] transition-colors rounded-panel"
-                >
-                  <div className="flex items-baseline gap-4 sm:gap-6 min-w-0">
-                    <span className="font-mono text-sm text-ink-subtle shrink-0">
-                      {tool.num}
-                    </span>
-                    <div className="space-y-1">
-                      <h3 className="font-serif text-[28px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
-                        {tool.title}
-                      </h3>
-                      <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
-                        {tool.description}
-                      </p>
-                    </div>
-                  </div>
+      {/* How It Works */}
+      {howItWorksSection}
 
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-brand shrink-0 self-end sm:self-center">
-                    <span>Open</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1" strokeWidth={1.75} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-          {recentSessionsSection}
-        </>
-      )}
+      {/* Continue Where You Left Off (rendered only when history exists) */}
+      {hasHistory && recentSessionsSection}
 
       {/* Frequently Asked Questions */}
       <section className="space-y-6 pt-6 border-t border-ink-border">

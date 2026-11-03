@@ -35,10 +35,10 @@ const COUNT_OPTIONS = [
 
 const QUIZ_SECTIONS = [
   { title: "Multiple Choice Questions", description: "Four-option questions targeting core mechanisms from your notes." },
-  { title: "Progress Rail", description: "Real-time navigation tracking answered and pending questions." },
+  { title: "Progress tracker", description: "Navigation tracking answered and pending questions." },
   { title: "Instant Feedback", description: "Immediate validation revealing correct answers and rationales." },
   { title: "Answer Explanations", description: "Clear explanations clarifying the underlying concepts." },
-  { title: "Final Score Assessment", description: "Score count-up and comprehensive question review." },
+  { title: "Your score and a review of every question", description: "Review each question with detailed explanations." },
 ];
 
 const ACTIVE_QUIZ_STORAGE_KEY = "studymate_active_quiz_v1";
@@ -432,7 +432,7 @@ export function QuizGenerator() {
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
-            variant="ghost"
+            variant="subtle"
             size="sm"
             onClick={handleClear}
             disabled={status === "loading" || !text}

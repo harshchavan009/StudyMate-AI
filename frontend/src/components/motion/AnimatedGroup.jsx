@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 /**
- * AnimatedGroup: Staggered entry animation primitive (M3).
+ * AnimatedGroup: Staggered entry animation component (M3).
  * Animates child elements with opacity fade and 8px rise with 60ms stagger.
  */
 export function AnimatedGroup({

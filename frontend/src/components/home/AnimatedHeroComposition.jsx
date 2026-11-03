@@ -157,7 +157,7 @@ export function AnimatedHeroComposition() {
         </p>
       </div>
 
-      {/* Animated Document Sheet (M1) */}
+      {/* Animated Document Preview (M1) */}
       <div className="space-y-3.5 text-xs">
         {/* Render the 6 Structured Section Blocks */}
         {SECTIONS_CONFIG.map((sec, secIdx) => {

@@ -78,7 +78,7 @@ export function NotesToStructureDiagram({ className }) {
             fontWeight="500"
             fill="#1F3FBF"
           >
-            VALIDATE & SYNTHESIZE
+            STRUCTURE
           </text>
         </g>
 
