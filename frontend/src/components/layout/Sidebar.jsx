@@ -21,16 +21,24 @@ export function Sidebar({ collapsed }) {
         collapsed ? "w-16" : "w-[264px]"
       )}
     >
-      {/* Wordmark Header (No letter-in-a-square) */}
+      {/* Wordmark Header with Custom SVG Mark */}
       <div className="h-14 px-4 flex items-center border-b border-ink-border">
-        <NavLink to="/" className="flex items-center gap-2 overflow-hidden">
-          {!collapsed ? (
-            <span className="font-serif text-lg font-semibold tracking-tight text-ink">
+        <NavLink to="/" className="flex items-center gap-2.5 overflow-hidden group">
+          <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+            <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M4 6.5C4 5.67157 4.67157 5 5.5 5H14.5C15.3284 5 16 5.67157 16 6.5V26.5C16 25.6716 15.3284 25 14.5 25H5.5C4.67157 25 4 25.6716 4 26.5V6.5Z" fill="#1F3FBF"/>
+              <path d="M28 6.5C28 5.67157 27.3284 5 26.5 5H17.5C16.6716 5 16 5.67157 16 6.5V26.5C16 25.6716 16.6716 25 17.5 25H26.5C27.3284 25 28 25.6716 28 26.5V6.5Z" fill="#1F3FBF" opacity="0.88"/>
+              <line x1="8" y1="10" x2="12" y2="10" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="8" y1="14" x2="12" y2="14" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="8" y1="18" x2="11" y2="18" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="20" y1="10" x2="24" y2="10" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="20" y1="14" x2="24" y2="14" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="20" y1="18" x2="23" y2="18" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          {!collapsed && (
+            <span className="font-serif text-lg font-medium tracking-tight text-ink group-hover:text-brand transition-colors">
               StudyMate AI
-            </span>
-          ) : (
-            <span className="font-serif text-lg font-semibold tracking-tight text-ink">
-              S
             </span>
           )}
         </NavLink>
