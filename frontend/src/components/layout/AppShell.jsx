@@ -5,7 +5,8 @@ import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { Footer } from "./Footer";
 import { ProgressiveBlur } from "@/components/motion/ProgressiveBlur";
-import { Menu, ChevronRight } from "lucide-react";
+import { CommandMenu } from "@/components/ui/CommandMenu";
+import { Menu, ChevronRight, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +23,22 @@ const BREADCRUMB_NAMES = {
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   // Three states: 'checking' | 'online' | 'unreachable'
   const [healthState, setHealthState] = useState("checking");
   const location = useLocation();
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut (F6)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandMenuOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -124,8 +138,22 @@ export function AppShell() {
                 </nav>
               </div>
 
-              {/* Real 3-State Backend Health Indicator */}
-              <div className="flex items-center">
+              {/* Right Header: Search Shortcut + Real 3-State Backend Health Indicator */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCommandMenuOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded text-xs text-ink-secondary hover:text-ink bg-[#FAF9F6] border border-ink-border hover:border-brand/40 transition-colors"
+                  title="Search commands and recent sessions (Cmd+K)"
+                  aria-label="Open command menu"
+                >
+                  <Search className="w-3.5 h-3.5 text-ink-subtle" strokeWidth={1.75} />
+                  <span>Search or jump...</span>
+                  <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+                    ⌘K
+                  </kbd>
+                </button>
+
                 <div
                   className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-ink-border bg-[#FAF9F6]"
                   title={`Backend service: ${healthState}`}
@@ -177,6 +205,12 @@ export function AppShell() {
         <div className="lg:hidden">
           <MobileNav />
         </div>
+
+        {/* Global Command Menu (Cmd/Ctrl + K) (F6) */}
+        <CommandMenu
+          isOpen={commandMenuOpen}
+          onClose={() => setCommandMenuOpen(false)}
+        />
       </div>
     </MotionConfig>
   );
