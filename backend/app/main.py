@@ -118,3 +118,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 # Include API routes
 app.include_router(api_router)
+

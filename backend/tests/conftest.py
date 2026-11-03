@@ -18,3 +18,4 @@ def client():
     """Test client fixture."""
     with TestClient(app) as test_client:
         yield test_client
+

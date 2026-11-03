@@ -22,3 +22,4 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSO
             "type": "rate_limit_exceeded",
         },
     )
+

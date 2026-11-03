@@ -105,3 +105,4 @@ def explain_concept(request: Request, payload: ExplainConceptRequest):
             status_code=500,
             detail="A processing error occurred while generating the explanation. Please try again.",
         )
+

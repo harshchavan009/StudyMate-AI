@@ -206,3 +206,4 @@ class HealthResponse(BaseValidatedModel):
     environment: str
     gemini_configured: bool
     version: str
+
