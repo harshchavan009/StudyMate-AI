@@ -17,8 +17,8 @@ export function Sidebar({ collapsed }) {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col border-r border-ink-border bg-white transition-all duration-200 select-none z-20 shrink-0",
-        collapsed ? "w-16" : "w-60"
+        "hidden md:flex flex-col fixed left-0 top-0 bottom-0 h-screen border-r border-ink-border bg-white transition-[width] duration-200 select-none z-30 overflow-y-auto shrink-0",
+        collapsed ? "w-16" : "w-[264px]"
       )}
     >
       {/* Wordmark Header (No letter-in-a-square) */}

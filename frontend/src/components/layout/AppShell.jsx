@@ -6,6 +6,7 @@ import { MobileNav } from "./MobileNav";
 import { Footer } from "./Footer";
 import { Menu, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const BREADCRUMB_NAMES = {
   "/": "Overview",
@@ -53,14 +54,18 @@ export function AppShell() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen bg-canvas text-ink flex flex-col font-sans antialiased selection:bg-brand-tint selection:text-brand">
-        <div className="flex-1 flex overflow-hidden">
-          {/* Desktop & Tablet Left Sidebar */}
-          <Sidebar collapsed={sidebarCollapsed} />
+        {/* Desktop Left Sidebar (Fixed 264px, full height with independent scroll) */}
+        <Sidebar collapsed={sidebarCollapsed} />
 
-          {/* Main Content Column */}
-          <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
-            {/* Top Bar with Minimal Breadcrumb and Real Health Indicator */}
-            <header className="h-14 border-b border-ink-border bg-white px-4 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
+        {/* Main Content Column with left offset matching fixed sidebar */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col min-w-0 transition-[padding] duration-200 pb-16 md:pb-0",
+            sidebarCollapsed ? "md:pl-16" : "md:pl-[264px]"
+          )}
+        >
+          {/* Top Bar: sticky, 56px (h-14) */}
+          <header className="h-14 border-b border-ink-border bg-white/95 backdrop-blur-sm px-4 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -119,7 +124,6 @@ export function AppShell() {
             {/* Footer */}
             <Footer />
           </div>
-        </div>
 
         {/* Mobile Bottom Navigation */}
         <MobileNav />
