@@ -74,7 +74,8 @@ export function QuizGenerator() {
   const [status, setStatus] = useState("empty"); // empty | loading | playing | finished | error
   const [error, setError] = useState(null);
   const [quizData, setQuizData] = useState(null);
-  const [limits, setLimits] = useState({ min: 20, max: 10000 });
+  const [limits, setLimits] = useState({ min: 20, max: 10000, focus_max: 200 });
+  const [focus, setFocus] = useState("");
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -149,7 +150,11 @@ export function QuizGenerator() {
     api.getConfig()
       .then((cfg) => {
         if (cfg?.quiz) {
-          setLimits({ min: cfg.quiz.min, max: cfg.quiz.max });
+          setLimits({
+            min: cfg.quiz.min,
+            max: cfg.quiz.max,
+            focus_max: cfg.quiz.focus_max || 200,
+          });
         }
       })
       .catch(() => {});
@@ -254,9 +259,15 @@ export function QuizGenerator() {
     setExplanationOpen(false);
 
     try {
-      const data = await api.generateQuiz(text.trim(), difficulty, Number(count), {
-        signal: controller.signal,
-      });
+      const data = await api.generateQuiz(
+        text.trim(),
+        difficulty,
+        Number(count),
+        focus.trim() || null,
+        {
+          signal: controller.signal,
+        }
+      );
 
       // C7: Shuffle options per question on the client while preserving correct answer
       const shuffledQuestions = shuffleQuestions(data.questions);
@@ -310,6 +321,7 @@ export function QuizGenerator() {
 
   const handleClear = () => {
     setText("");
+    setFocus("");
     clearDraft("quiz");
     try {
       localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
@@ -513,6 +525,31 @@ export function QuizGenerator() {
           onChange={(val) => setCount(Number(val))}
           ariaLabel="Select question count"
         />
+      </div>
+
+      {/* Focus Topic Setting */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="quiz-focus-input" className="text-xs font-semibold text-ink">
+            Focus Topic <span className="font-normal text-ink-subtle">(optional)</span>
+          </label>
+          <span className="text-[11px] font-mono tabular-nums text-ink-subtle">
+            {focus.length} / {limits.focus_max || 200}
+          </span>
+        </div>
+        <input
+          id="quiz-focus-input"
+          type="text"
+          value={focus}
+          onChange={(e) => setFocus(e.target.value.slice(0, limits.focus_max || 200))}
+          placeholder="e.g. Cache poisoning, state transitions"
+          disabled={status === "loading"}
+          maxLength={limits.focus_max || 200}
+          className="w-full text-xs sm:text-sm font-sans px-3.5 py-2 bg-white border border-ink-border rounded focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors text-ink placeholder:text-ink-subtle/60"
+        />
+        <p className="text-[11px] text-ink-subtle">
+          Directs questions toward this topic while remaining grounded in your notes.
+        </p>
       </div>
 
       {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}

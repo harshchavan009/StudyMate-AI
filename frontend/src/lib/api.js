@@ -138,12 +138,26 @@ export const api = {
       body: JSON.stringify({ text }),
       ...opts,
     }),
-  generateQuiz: (text, difficulty, question_count, opts) =>
-    request("/api/quiz", {
+  generateQuiz: (text, difficulty, question_count, focusOrOpts = null, maybeOpts = {}) => {
+    let focus = null;
+    let opts = {};
+    if (typeof focusOrOpts === "string") {
+      focus = focusOrOpts;
+      opts = maybeOpts || {};
+    } else if (typeof focusOrOpts === "object" && focusOrOpts !== null) {
+      opts = focusOrOpts;
+    }
+    return request("/api/quiz", {
       method: "POST",
-      body: JSON.stringify({ text, difficulty, question_count }),
+      body: JSON.stringify({
+        text,
+        difficulty,
+        question_count,
+        ...(focus && focus.trim() ? { focus: focus.trim() } : {}),
+      }),
       ...opts,
-    }),
+    });
+  },
   improveAnswer: (answer, subject_or_topic = null, opts) =>
     request("/api/improve-answer", {
       method: "POST",

@@ -100,6 +100,11 @@ class QuizRequest(BaseValidatedModel):
         default=5,
         description="Number of questions to generate.",
     )
+    focus: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Optional topic to focus questions on, constrained within source notes.",
+    )
 
     @field_validator("text")
     @classmethod

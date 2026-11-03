@@ -150,12 +150,13 @@ class GeminiService:
     # -----------------------------------------------------
     # 2. Quiz Generator with Bounded Retry (Max 2 Retries)
     # -----------------------------------------------------
-    def generate_quiz(self, text: str, difficulty: str, count: int) -> QuizResponse:
+    def generate_quiz(self, text: str, difficulty: str, count: int, focus: Optional[str] = None) -> QuizResponse:
         """Generate multiple choice questions with bounded retry on schema failure."""
+        sanitized_focus = sanitize_dashes(focus.strip()) if focus and isinstance(focus, str) else None
         if not self.api_key:
-            return self._mock_quiz(text, difficulty, count)
+            return self._mock_quiz(text, difficulty, count, focus=sanitized_focus)
 
-        user_prompt = build_quiz_user_prompt(text, difficulty, count)
+        user_prompt = build_quiz_user_prompt(text, difficulty, count, focus=sanitized_focus)
         max_attempts = 3
 
         for attempt in range(max_attempts):
@@ -409,7 +410,7 @@ class GeminiService:
             ),
         )
 
-    def _mock_quiz(self, text: str, difficulty: str, count: int) -> QuizResponse:
+    def _mock_quiz(self, text: str, difficulty: str, count: int, focus: Optional[str] = None) -> QuizResponse:
         templates = [
             (
                 "What is the primary function of deterministic state verification?",
@@ -471,10 +472,14 @@ class GeminiService:
         questions: List[QuizQuestion] = []
         for i in range(count):
             q_stem, opts, correct_idx, expl = templates[i % len(templates)]
+            if focus and focus.strip() and i == 0:
+                q_text = f"[Question 1 - Focus: {focus.strip()}] In the context of {focus.strip()}, {q_stem[0].lower() + q_stem[1:]}"
+            else:
+                q_text = f"[Question {i+1}] {q_stem}"
             questions.append(
                 QuizQuestion(
                     id=i + 1,
-                    question=f"[Question {i+1}] {q_stem}",
+                    question=q_text,
                     options=opts,
                     correct_index=correct_idx,
                     explanation=expl,

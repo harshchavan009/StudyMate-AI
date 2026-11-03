@@ -176,6 +176,40 @@ def test_quiz_generates_requested_count_and_schema(client: TestClient):
             assert len(q["explanation"]) > 10
 
 
+def test_quiz_focus_constraint_validation(client: TestClient):
+    """Verify quiz generator supports optional focus up to 200 chars and rejects > 200 chars."""
+    sample_text = (
+        "DNS resolution maps domain names to IP addresses through recursive query steps. "
+        "Authoritative nameservers maintain definitive zone records."
+    )
+    # Valid focus topic
+    res_valid = client.post(
+        "/api/quiz",
+        json={
+            "text": sample_text,
+            "difficulty": "medium",
+            "question_count": 5,
+            "focus": "recursive queries",
+        },
+    )
+    assert res_valid.status_code == 200
+    data_valid = res_valid.json()
+    assert len(data_valid["questions"]) == 5
+    assert "Focus: recursive queries" in data_valid["questions"][0]["question"]
+
+    # Focus exceeding 200 chars should fail with 422
+    res_invalid = client.post(
+        "/api/quiz",
+        json={
+            "text": sample_text,
+            "difficulty": "medium",
+            "question_count": 5,
+            "focus": "a" * 201,
+        },
+    )
+    assert res_invalid.status_code == 422
+
+
 def test_improver_generates_exact_spec_sections(client: TestClient):
     """Verify answer improver generates:
     Original Answer Feedback, Improved Answer, Key Improvements Made,

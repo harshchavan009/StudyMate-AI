@@ -92,8 +92,14 @@ Guidelines:
 5. Output strictly raw JSON, with no markdown code fences or backticks.
 """
 
-def build_quiz_user_prompt(text: str, difficulty: str, count: int) -> str:
-    return f"""Generate exactly {count} multiple choice questions at difficulty level '{difficulty}' from the text below:
+def build_quiz_user_prompt(text: str, difficulty: str, count: int, focus: Optional[str] = None) -> str:
+    focus_clause = ""
+    if focus and focus.strip():
+        focus_clause = (
+            f"\nFOCUS CONSTRAINT: Concentrate questions specifically on '{focus.strip()}'. "
+            "All questions must strictly remain grounded within the source material; do not introduce outside assertions.\n"
+        )
+    return f"""Generate exactly {count} multiple choice questions at difficulty level '{difficulty}' from the text below:{focus_clause}
 
 === SOURCE MATERIAL START ===
 {text}

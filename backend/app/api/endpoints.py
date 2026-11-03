@@ -43,6 +43,7 @@ def get_tool_configuration():
         quiz={
             "min": 20,
             "max": 10000,
+            "focus_max": 200,
             "counts": [5, 10, 15],
             "difficulties": ["easy", "medium", "hard"],
         },
@@ -85,6 +86,7 @@ def generate_quiz(request: Request, payload: QuizRequest):
             text=payload.text,
             difficulty=payload.difficulty,
             count=payload.question_count,
+            focus=payload.focus,
         )
     except HTTPException:
         raise
