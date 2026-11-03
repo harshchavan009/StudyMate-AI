@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { MOTION_TRANSITIONS } from "@/lib/motionTokens";
 import { cn } from "@/lib/utils";
 
 /**
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 export function TransitionPanel({
   children,
   className,
-  transition = { duration: 0.2, ease: "easeOut" },
+  transition = MOTION_TRANSITIONS.ui,
   variants,
   activeIndex = 0,
   ...motionProps

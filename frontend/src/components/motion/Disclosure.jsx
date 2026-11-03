@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useId, useEffect } from "react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
+import { MOTION_TRANSITIONS } from "@/lib/motionTokens";
 import { cn } from "@/lib/utils";
 
 const DisclosureContext = createContext(undefined);
@@ -55,7 +56,7 @@ export function Disclosure({
   defaultOpen = false,
   onOpenChange,
   children,
-  transition = { duration: 0.2, ease: "easeOut" },
+  transition = MOTION_TRANSITIONS.panel,
   variants,
 }) {
   return (
@@ -123,7 +124,7 @@ export function DisclosureContent({ children, className }) {
             animate="expanded"
             exit="collapsed"
             variants={combinedVariants}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={MOTION_TRANSITIONS.panel}
           >
             {children}
           </motion.div>

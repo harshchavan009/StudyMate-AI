@@ -74,6 +74,15 @@ export default {
         menu: "0 4px 12px rgba(22, 24, 29, 0.08)",
         dialog: "0 8px 24px rgba(22, 24, 29, 0.12)",
       },
+      transitionTimingFunction: {
+        standard: "cubic-bezier(0.2, 0, 0, 1)",
+      },
+      transitionDuration: {
+        micro: "120ms",
+        ui: "200ms",
+        panel: "320ms",
+        signature: "600ms",
+      },
     },
   },
   plugins: [],
