@@ -39,20 +39,20 @@ const TOOLS_INDEX = [
 
 const FAQS = [
   {
-    q: "How does StudyMate AI process text?",
-    a: "Your study material is sent over an encrypted HTTPS connection to the backend, which communicates with the Gemini API using structured academic prompts. The response is validated against strict Pydantic schemas before rendering in your browser.",
+    q: "How does StudyMate AI process text and handle data?",
+    a: "Your study material is sent over an encrypted HTTPS connection to our backend and passed to the Google Gemini API using structured academic prompts. On free API tiers, Google may use prompt and output data to train models per Google Generative AI terms. Do not submit sensitive personal or confidential information. We do not store your inputs on any database.",
   },
   {
     q: "Are my study notes or personal answers saved on a database?",
-    a: "No. StudyMate AI does not use a database or user accounts. All processing happens in-memory for the duration of the request. Recent session history is stored only in your own browser using localStorage, and you can clear it anytime.",
+    a: "No. StudyMate AI does not use a cloud database or user accounts. All processing happens in-memory for the duration of the request. Recent session history is saved locally in your own browser using localStorage, and you can clear it anytime.",
   },
   {
     q: "How are quizzes validated?",
-    a: "Every quiz is checked against a strict schema requiring four options and a valid answer index. If the response does not pass validation, the backend retries automatically before returning results.",
+    a: "Every quiz is checked programmatically against a strict schema requiring four options and a valid answer index. Quizzes check structural integrity, not factual certification against outside reality. Always verify key facts against your course syllabus or textbooks.",
   },
   {
     q: "What are the input character limits?",
-    a: "To ensure fast and reliable responses, study notes accept 20 to 10,000 characters, student answers accept 10 to 5,000 characters, and concept queries accept 3 to 300 characters.",
+    a: "To ensure fast and reliable responses, study notes accept 20 to 10,000 characters, student answers accept 10 to 5,000 characters, and concept queries accept 3 to 300 characters. These limits are served dynamically from the backend configuration.",
   },
 ];
 
