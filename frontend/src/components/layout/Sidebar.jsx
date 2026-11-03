@@ -140,19 +140,19 @@ export function Sidebar({ collapsed = false, drawerOpen = false, onClose = null 
                   to={item.path}
                   onClick={handleLinkClick}
                   className={cn(
-                    "w-full h-10 relative flex items-center justify-start text-left gap-3 px-4 text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                    "w-full h-10 relative flex items-center justify-start text-left gap-3 px-4 text-xs rounded-control transition-colors duration-120 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                     isActive
                       ? "text-brand font-semibold"
-                      : "text-ink-secondary hover:text-ink"
+                      : "text-ink-secondary hover:text-ink font-normal"
                   )}
                   title={collapsed && !drawerOpen ? item.label : undefined}
                 >
-                  {/* 2px accent bar on the left when active (B3) */}
+                  {/* 2px solid accent bar on the left when active (B3) */}
                   {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[2px] bg-brand rounded-r" />
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-brand rounded-r" />
                   )}
                   <Icon
-                    className={cn("w-4 h-4 shrink-0", isActive ? "text-brand" : "text-ink-subtle")}
+                    className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-brand" : "text-ink-subtle")}
                     strokeWidth={1.75}
                   />
                   {(!collapsed || drawerOpen) && <span className="truncate">{item.label}</span>}

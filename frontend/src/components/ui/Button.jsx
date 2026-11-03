@@ -15,19 +15,19 @@ export const Button = forwardRef(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors duration-150 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:bg-[#E5E5DF] disabled:text-[#7E8695] disabled:border-transparent disabled:cursor-not-allowed disabled:shadow-none select-none";
+      "inline-flex items-center justify-center font-medium transition-colors duration-120 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:shadow-none select-none";
 
     const variants = {
       primary:
-        "bg-brand text-white hover:bg-brand-hover active:bg-brand-active border border-transparent shadow-sm",
+        "bg-brand text-white hover:bg-brand-hover active:bg-brand-active border border-transparent shadow-sm disabled:bg-[#EAE8E3] disabled:text-[#7E8695] disabled:border-transparent",
       secondary:
-        "bg-white text-ink border border-ink-border hover:border-ink-border-hover hover:bg-black/[0.01] active:bg-black/[0.03]",
-      subtle:
-        "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08]",
+        "bg-transparent text-ink border border-ink-border hover:border-ink-border-hover hover:bg-black/[0.02] active:bg-black/[0.05] disabled:bg-transparent disabled:text-[#7E8695] disabled:border-ink-border/40",
       tertiary:
-        "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08]",
+        "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08] border border-transparent disabled:bg-transparent disabled:text-[#7E8695]/50",
+      subtle:
+        "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08] border border-transparent disabled:bg-transparent disabled:text-[#7E8695]/50",
       danger:
-        "bg-feedback-error text-white hover:bg-[#9B1C1C] active:bg-[#771515]",
+        "bg-feedback-error text-white hover:bg-[#9B1C1C] active:bg-[#771515] disabled:bg-[#EAE8E3] disabled:text-[#7E8695]",
     };
 
     const sizes = {

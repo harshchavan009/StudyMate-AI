@@ -432,7 +432,7 @@ export function QuizGenerator() {
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
-            variant="subtle"
+            variant="secondary"
             size="sm"
             onClick={handleClear}
             disabled={status === "loading" || !text}
