@@ -160,16 +160,13 @@ export function ResultPanel({
             <Card className="p-6 space-y-6 bg-surface border border-ink-border rounded-panel">
               <div className="space-y-1 pb-4 border-b border-ink-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-sans tracking-[0.04em] text-ink-subtle">
+                  <h3 className="font-serif text-lg font-medium text-ink">
                     What you will get
-                  </span>
-                  <span className="text-xs text-ink-subtle">
+                  </h3>
+                  <span className="text-xs text-ink-subtle font-sans tabular-nums">
                     {sections.length} sections
                   </span>
                 </div>
-                <h3 className="font-serif text-lg font-medium text-ink">
-                  What you will get
-                </h3>
                 <p className="text-xs text-ink-secondary">
                   Your result will appear here across the following structured sections:
                 </p>
