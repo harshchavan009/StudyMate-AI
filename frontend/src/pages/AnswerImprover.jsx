@@ -215,6 +215,37 @@ export function AnswerImprover() {
     setError(null);
   };
 
+  const handleTrySample = async () => {
+    setAnswer(SAMPLE_ANSWER);
+    setSubjectOrTopic(SAMPLE_TOPIC);
+    setIsTouched(true);
+    setStatus("loading");
+    setError(null);
+    try {
+      const data = await api.improveAnswer(SAMPLE_ANSWER, SAMPLE_TOPIC);
+      setResult(data);
+      setStatus("success");
+      saveRecentSession({
+        tool: "improver",
+        toolName: "Answer Improver",
+        title: SAMPLE_TOPIC,
+        input: SAMPLE_ANSWER,
+        result: data,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to analyze and improve sample answer");
+      setStatus("error");
+    }
+  };
+
+  const handleSelectRecent = (rec) => {
+    if (!rec?.result) return;
+    setAnswer(rec.input || "");
+    setSubjectOrTopic(rec.title || "");
+    setResult(rec.result);
+    setStatus("success");
+  };
+
   const activeAnswerText = liveAcceptedText || result?.improved_answer || "";
 
   const rawMarkdown = result
@@ -400,6 +431,8 @@ export function AnswerImprover() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
+      onTrySample={handleTrySample}
+      onSelectRecent={handleSelectRecent}
       sections={IMPROVER_SECTIONS}
       title="Answer Improvement"
       badge={result?.subject_or_topic || null}

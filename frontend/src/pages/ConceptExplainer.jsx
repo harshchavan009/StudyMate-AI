@@ -344,6 +344,39 @@ export function ConceptExplainer() {
     setError(null);
   };
 
+  const handleTrySample = async () => {
+    setConcept(SAMPLE_CONCEPT);
+    setSubject(SAMPLE_SUBJECT);
+    setSelectedLevel("intermediate");
+    setIsTouched(true);
+    setStatus("loading");
+    setError(null);
+    try {
+      const data = await api.explainConcept(SAMPLE_CONCEPT, "intermediate", SAMPLE_SUBJECT);
+      setExplainerCache({ intermediate: data });
+      setStatus("success");
+      saveRecentSession({
+        tool: "explainer",
+        toolName: "Concept Explainer",
+        title: `${SAMPLE_CONCEPT} (intermediate)`,
+        input: SAMPLE_CONCEPT,
+        result: data,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to explain sample concept");
+      setStatus("error");
+    }
+  };
+
+  const handleSelectRecent = (rec) => {
+    if (!rec?.result) return;
+    setConcept(rec.input || "");
+    const lvl = rec.result.level?.toLowerCase() || "intermediate";
+    setSelectedLevel(lvl);
+    setExplainerCache({ [lvl]: rec.result });
+    setStatus("success");
+  };
+
   const currentResult = explainerCache[selectedLevel];
   const hasAnyCached = Object.keys(explainerCache).length > 0;
 
@@ -471,6 +504,8 @@ export function ConceptExplainer() {
       error={error}
       onRetry={() => fetchExplanation(selectedLevel, true)}
       onStop={handleStop}
+      onTrySample={handleTrySample}
+      onSelectRecent={handleSelectRecent}
       sections={EXPLAINER_SECTIONS}
       title={currentResult ? currentResult.concept : "Concept Explanation"}
       badge={

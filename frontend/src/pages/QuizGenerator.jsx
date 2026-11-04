@@ -16,7 +16,7 @@ import { NextSteps } from "@/components/tools/NextSteps";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
-import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
+import { saveRecentSession, saveQuizAttempt, saveDraft, getDraft, clearDraft } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_TEXT = `Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power biochemical reactions. This chemical energy is stored in a small molecule called adenosine triphosphate (ATP). 
@@ -349,6 +349,45 @@ export function QuizGenerator() {
     setCurrentIndex(0);
   };
 
+  const handleTrySample = async () => {
+    setText(SAMPLE_TEXT);
+    setIsTouched(true);
+    setStatus("loading");
+    setError(null);
+    try {
+      const data = await api.generateQuiz(SAMPLE_TEXT, difficulty, count);
+      const preparedData = {
+        ...data,
+        questions: shuffleQuestions(data.questions),
+      };
+      setQuizData(preparedData);
+      initFlashcards(preparedData.questions);
+      setUserAnswers({});
+      setCurrentIndex(0);
+      setStatus("playing");
+      saveRecentSession({
+        tool: "quiz",
+        toolName: "Quiz Generator",
+        title: `${difficulty.toUpperCase()} Quiz (${preparedData.questions.length} Qs)`,
+        input: SAMPLE_TEXT,
+        result: preparedData,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to generate sample quiz");
+      setStatus("error");
+    }
+  };
+
+  const handleSelectRecent = (rec) => {
+    if (!rec?.result) return;
+    setText(rec.input || "");
+    setQuizData(rec.result);
+    initFlashcards(rec.result.questions);
+    setUserAnswers({});
+    setCurrentIndex(0);
+    setStatus("playing");
+  };
+
   // Keyboard navigation for active quiz (keys 1-4, Enter)
   useEffect(() => {
     if (status !== "playing" || !quizData?.questions) return;
@@ -423,6 +462,29 @@ export function QuizGenerator() {
         }
       }, 50);
     } else {
+      // Calculate score and missed questions for real attempt recording (Part 3.3 / 4.6)
+      const qs = quizData.questions;
+      let finalScore = 0;
+      const missed = [];
+      qs.forEach((q, idx) => {
+        const uAns = userAnswers[idx];
+        if (uAns === q.correct_index) {
+          finalScore += 1;
+        } else {
+          missed.push({
+            question: q.question,
+            selectedOptionText: uAns !== undefined ? q.options[uAns] : "No answer selected",
+            correctOptionText: q.options[q.correct_index],
+            explanation: q.explanation,
+          });
+        }
+      });
+      saveQuizAttempt({
+        score: finalScore,
+        total: qs.length,
+        title: `${difficulty.toUpperCase()} Quiz (${qs.length} Qs)`,
+        missedQuestions: missed,
+      });
       setStatus("finished");
     }
   };
@@ -619,6 +681,8 @@ export function QuizGenerator() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
+      onTrySample={handleTrySample}
+      onSelectRecent={handleSelectRecent}
       sections={QUIZ_SECTIONS}
       title="Practice Quiz"
       badge={questions.length > 0 ? `${questions.length} questions` : null}
@@ -689,23 +753,24 @@ export function QuizGenerator() {
             </div>
           </div>
 
-          {/* Question Slide via TransitionPanel (M4: 200ms slide with fade) */}
+          {/* Question Slide via TransitionPanel (Part 4.6: serif 24px active question, 56px option rows with keycap badges A-D) */}
           <TransitionPanel activeIndex={currentIndex}>
             <div className="space-y-5">
-              <Card className="p-6 space-y-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+              <Card className="p-6 sm:p-7 space-y-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle font-sans">
                   Multiple Choice Question
                 </span>
 
+                {/* 4.6 Active question: serif 24px */}
                 <h3
                   ref={questionHeadingRef}
                   tabIndex={-1}
-                  className="font-serif text-base sm:text-lg text-ink font-medium leading-snug outline-none"
+                  className="font-serif text-[24px] text-ink font-medium leading-snug outline-none"
                 >
                   {currentQuestion.question}
                 </h3>
 
-                {/* Option Buttons (M4: updates in 150ms) */}
+                {/* 4.6 Option rows: 56px option rows with keycap badges (A, B, C, D) */}
                 <div className="space-y-2.5 pt-2">
                   {currentQuestion.options.map((option, optIdx) => {
                     const isSelected = userAnswers[currentIndex] === optIdx;
@@ -715,7 +780,7 @@ export function QuizGenerator() {
                     let optionStyle = "border-ink-border hover:border-ink hover:bg-black/[0.01]";
                     if (isAnswered) {
                       if (isCorrectOption) {
-                        optionStyle = "border-feedback-success bg-feedback-success/5 text-ink";
+                        optionStyle = "border-feedback-success bg-feedback-success/5 text-ink font-medium";
                       } else if (isSelected) {
                         optionStyle = "border-feedback-error bg-feedback-error/5 text-ink";
                       } else {
@@ -730,15 +795,16 @@ export function QuizGenerator() {
                         onClick={() => handleSelectAnswer(optIdx)}
                         disabled={isAnswered}
                         className={cn(
-                          "w-full text-left p-3.5 rounded border text-xs sm:text-sm transition-all duration-150 flex items-center justify-between gap-3 min-h-[44px]",
+                          "w-full text-left px-4 h-14 min-h-[56px] rounded-[6px] border text-sm transition-all duration-150 flex items-center justify-between gap-3",
                           optionStyle
                         )}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-xs font-sans font-semibold text-ink shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* 4.6 Keycap badge: A, B, C, D */}
+                          <span className="w-7 h-7 flex items-center justify-center rounded-[4px] bg-[#EAE8E3] text-xs font-sans font-semibold text-ink shrink-0 border border-ink-border/50">
                             {String.fromCharCode(65 + optIdx)}
                           </span>
-                          <span className="leading-relaxed">{option}</span>
+                          <span className="leading-snug truncate sm:whitespace-normal">{option}</span>
                         </div>
 
                         {isAnswered && isCorrectOption && (
@@ -753,42 +819,36 @@ export function QuizGenerator() {
                 </div>
               </Card>
 
-              {/* Expandable Explanation via Disclosure (M4) */}
+              {/* 4.6 Docked bottom bar with explanation and "Next question" button */}
               {userAnswers[currentIndex] !== undefined && (
-                <Disclosure open={explanationOpen} className="p-5 bg-[#FCFBFA] border border-ink-border rounded-panel space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-ink">
-                      Explanation
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setExplanationOpen(!explanationOpen)}
-                      className="text-[11px] text-brand hover:underline font-medium"
-                    >
-                      {explanationOpen ? "Collapse" : "Expand"}
-                    </button>
-                  </div>
-                  <DisclosureContent>
-                    <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed pt-1">
+                <div className="sticky bottom-0 z-20 p-4 sm:p-5 bg-white border border-ink-border rounded-panel flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md animate-fadeIn">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {userAnswers[currentIndex] === currentQuestion.correct_index ? (
+                        <span className="text-xs font-semibold text-feedback-success flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" /> Correct Answer
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-feedback-error flex items-center gap-1">
+                          <XCircle className="w-4 h-4" /> Incorrect Selection
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-[13px] text-ink-secondary leading-relaxed line-clamp-3">
                       {currentQuestion.explanation}
                     </p>
-                  </DisclosureContent>
-                </Disclosure>
-              )}
-
-              {/* Next Question Navigation */}
-              {userAnswers[currentIndex] !== undefined && (
-                <div className="flex justify-end pt-2">
+                  </div>
                   <Button
                     type="button"
                     variant="primary"
                     size="md"
                     onClick={handleNextQuestion}
+                    className="shrink-0 self-end sm:self-center"
                   >
                     <span>
                       {currentIndex < questions.length - 1 ? "Next Question" : "Complete Quiz"}
                     </span>
-                    <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+                    <ArrowRight className="w-4 h-4 ml-1.5" strokeWidth={1.75} />
                   </Button>
                 </div>
               )}
@@ -875,9 +935,9 @@ export function QuizGenerator() {
             </div>
           </Card>
 
-          {/* Per-Question Detailed Review List */}
-          <div className="space-y-3">
-            <h3 className="font-serif text-lg font-medium text-ink">
+          {/* 4.6 Review mode: all questions in a vertical list, correct answers marked with a green hairline and explanation visible */}
+          <div className="space-y-4">
+            <h3 className="font-serif text-xl font-medium text-ink">
               Detailed Question Review
             </h3>
 
@@ -886,13 +946,13 @@ export function QuizGenerator() {
               const isCorrect = userAns === q.correct_index;
 
               return (
-                <Card id={`review-q-${idx + 1}`} key={idx} className="p-5 space-y-3 scroll-mt-20">
+                <Card id={`review-q-${idx + 1}`} key={idx} className="p-5 sm:p-6 space-y-4 scroll-mt-20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 flex items-center justify-center rounded bg-[#EAE8E3] text-xs font-sans tabular-nums font-medium text-ink shrink-0 mt-0.5">
+                      <span className="w-6 h-6 flex items-center justify-center rounded bg-[#EAE8E3] text-xs font-sans tabular-nums font-semibold text-ink shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
-                      <p className="text-xs sm:text-sm font-medium text-ink leading-snug">
+                      <p className="text-sm sm:text-base font-medium text-ink leading-snug">
                         {q.question}
                       </p>
                     </div>
@@ -910,18 +970,33 @@ export function QuizGenerator() {
                     )}
                   </div>
 
-                  <div className="pl-7 space-y-1.5 text-xs">
-                    <p className="text-ink">
-                      <strong className="text-ink-secondary">Correct Answer:</strong> {q.options[q.correct_index]}
-                    </p>
-                    {!isCorrect && userAns !== undefined && (
-                      <p className="text-feedback-error">
-                        <strong>Your Answer:</strong> {q.options[userAns]}
-                      </p>
-                    )}
-                    <p className="text-ink-secondary leading-relaxed pt-1 border-t border-ink-border/50">
-                      {q.explanation}
-                    </p>
+                  {/* Options in vertical list, correct answer marked with a green hairline */}
+                  <div className="space-y-2 pl-8">
+                    {q.options.map((opt, oIdx) => {
+                      const isCorrectOpt = oIdx === q.correct_index;
+                      const isUserPicked = userAns === oIdx;
+
+                      return (
+                        <div
+                          key={oIdx}
+                          className={cn(
+                            "px-3 py-2 text-xs rounded transition-colors flex items-center justify-between",
+                            isCorrectOpt && "border-l-2 border-l-feedback-success bg-feedback-success/5 text-feedback-success font-medium",
+                            !isCorrectOpt && isUserPicked && "border-l-2 border-l-feedback-error bg-feedback-error/5 text-feedback-error",
+                            !isCorrectOpt && !isUserPicked && "text-ink-secondary"
+                          )}
+                        >
+                          <span>{String.fromCharCode(65 + oIdx)}. {opt}</span>
+                          {isCorrectOpt && <span className="text-[10px] uppercase font-semibold">Correct answer</span>}
+                          {!isCorrectOpt && isUserPicked && <span className="text-[10px] uppercase font-semibold">Your choice</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Explanation visible directly */}
+                  <div className="pl-8 pt-2 border-t border-ink-border/50 text-xs sm:text-[13px] text-ink-secondary leading-relaxed">
+                    <strong className="text-ink">Explanation:</strong> {q.explanation}
                   </div>
                 </Card>
               );

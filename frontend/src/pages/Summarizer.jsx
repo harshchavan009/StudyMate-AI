@@ -188,6 +188,35 @@ export function Summarizer() {
     }
   };
 
+  const handleTrySample = async () => {
+    setText(SAMPLE_TEXT);
+    setIsTouched(true);
+    setStatus("loading");
+    setError(null);
+    try {
+      const data = await api.summarize(SAMPLE_TEXT);
+      setResult(data);
+      setStatus("success");
+      saveRecentSession({
+        tool: "summarizer",
+        toolName: "Summarizer",
+        title: "Cellular Energy & Mitochondria",
+        input: SAMPLE_TEXT,
+        result: data,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to generate sample");
+      setStatus("error");
+    }
+  };
+
+  const handleSelectRecent = (rec) => {
+    if (!rec) return;
+    setText(rec.input || "");
+    setResult(rec.result);
+    setStatus("success");
+  };
+
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -316,6 +345,8 @@ export function Summarizer() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
+      onTrySample={handleTrySample}
+      onSelectRecent={handleSelectRecent}
       sections={SUMMARIZER_SECTIONS}
       title="Academic Summary"
       badge="6 sections"
@@ -324,9 +355,9 @@ export function Summarizer() {
       miniNav={<SectionMiniNav sections={MINI_NAV_SECTIONS} />}
     >
       {result && (
-        <AnimatedGroup stagger={0.06} className="space-y-6">
-          {/* 1. Topic Overview */}
-          <Card id="summary-sec-1" className="p-6 space-y-3">
+        <AnimatedGroup stagger={0.06} className="space-y-8">
+          {/* 1. Topic Overview (Part 4.5: 20px serif heading, 17px body) */}
+          <div id="summary-sec-1" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="1. Topic Overview"
               sectionId="topic_overview"
@@ -335,13 +366,16 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 1. Topic Overview\n\n${result.topic_overview}`}
             />
-            <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
+            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+              Topic Overview
+            </h3>
+            <p className="text-[17px] leading-[1.65] text-ink max-w-prose">
               {result.topic_overview}
             </p>
-          </Card>
+          </div>
 
-          {/* 2. Key Concepts */}
-          <Card id="summary-sec-2" className="p-6 space-y-3">
+          {/* 2. Key Concepts (Part 4.5: large light numerals 40px serif #C9C4B8, concept name semibold, explanation below) */}
+          <div id="summary-sec-2" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="2. Key Concepts"
               sectionId="key_concepts"
@@ -349,18 +383,35 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 2. Key Concepts\n\n${result.key_concepts?.map((c) => `- ${c}`).join("\n")}`}
             />
-            <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
-              {result.key_concepts?.map((concept, idx) => (
-                <li key={idx} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
-                  <span>{concept}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+              Key Concepts
+            </h3>
+            <div className="space-y-4 pt-1">
+              {result.key_concepts?.map((concept, idx) => {
+                const parts = concept.split(/:\s*|—\s*|-\s*/);
+                const title = parts.length > 1 ? parts[0].trim() : concept;
+                const explanation = parts.length > 1 ? parts.slice(1).join(": ").trim() : "";
+                return (
+                  <div key={idx} className="flex items-start gap-4">
+                    <span className="font-serif text-[40px] leading-none text-[#C9C4B8] select-none font-light shrink-0 w-8 text-right tabular-nums">
+                      {idx + 1}
+                    </span>
+                    <div className="space-y-1 pt-1 min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold text-ink">{title}</h4>
+                      {explanation && (
+                        <p className="text-[15px] sm:text-[17px] leading-[1.65] text-ink-secondary">
+                          {explanation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* 3. Important Definitions */}
-          <Card id="summary-sec-3" className="p-6 space-y-3">
+          {/* 3. Important Definitions (Part 4.5: definition list with 1px hairline between items; term in semibold, definition indented) */}
+          <div id="summary-sec-3" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="3. Important Definitions"
               sectionId="important_definitions"
@@ -368,22 +419,25 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 3. Important Definitions\n\n${result.important_definitions?.map((d) => `### ${d.term}\n${d.definition}`).join("\n\n")}`}
             />
-            <div className="space-y-3">
+            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+              Important Definitions
+            </h3>
+            <dl className="divide-y divide-ink-border pt-1">
               {result.important_definitions?.map((item, idx) => (
-                <div key={idx} className="p-3.5 bg-[#FCFBFA] border border-ink-border rounded space-y-1">
-                  <h3 className="text-xs sm:text-sm font-semibold text-ink">
+                <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1">
+                  <dt className="text-sm font-semibold text-ink">
                     {item.term}
-                  </h3>
-                  <p className="text-xs text-ink-secondary leading-relaxed">
+                  </dt>
+                  <dd className="pl-4 text-[15px] sm:text-[17px] leading-[1.65] text-ink-secondary mt-1">
                     {item.definition}
-                  </p>
+                  </dd>
                 </div>
               ))}
-            </div>
-          </Card>
+            </dl>
+          </div>
 
-          {/* 4. Important Points */}
-          <Card id="summary-sec-4" className="p-6 space-y-3">
+          {/* 4. Important Points (Part 4.5: 6px accent square bullets, not round bullets) */}
+          <div id="summary-sec-4" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="4. Important Points"
               sectionId="important_points"
@@ -391,18 +445,21 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 4. Important Points\n\n${result.important_points?.map((p) => `- ${p}`).join("\n")}`}
             />
-            <ul className="space-y-2 text-xs sm:text-sm text-ink leading-relaxed">
+            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+              Important Points
+            </h3>
+            <ul className="space-y-3 pt-1 text-[15px] sm:text-[17px] leading-[1.65] text-ink">
               {result.important_points?.map((point, idx) => (
-                <li key={idx} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
+                <li key={idx} className="flex items-start gap-3">
+                  <span className="w-1.5 h-1.5 bg-brand mt-2.5 shrink-0 rounded-none" />
                   <span>{point}</span>
                 </li>
               ))}
             </ul>
-          </Card>
+          </div>
 
-          {/* 5. Exam Preparation Notes */}
-          <Card id="summary-sec-5" className="p-6 space-y-3 bg-[#FCFBFA]">
+          {/* 5. Exam Preparation Notes (Part 4.5: light tinted panel with a 3px accent left border) */}
+          <div id="summary-sec-5" className="p-5 bg-brand-tint/30 border-l-[3px] border-l-brand border-y border-r border-ink-border rounded-r-[6px] space-y-3">
             <SectionHeader
               title="5. Exam Preparation Notes"
               sectionId="exam_notes"
@@ -410,18 +467,21 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 5. Exam Preparation Notes\n\n${result.exam_preparation_notes?.map((n) => `- ${n}`).join("\n")}`}
             />
+            <h3 className="font-serif text-[18px] font-medium text-ink">
+              Exam Preparation Notes
+            </h3>
             <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
               {result.exam_preparation_notes?.map((note, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
-                  <span className="text-brand font-semibold">→</span>
+                  <span className="text-brand font-semibold shrink-0">→</span>
                   <span>{note}</span>
                 </li>
               ))}
             </ul>
-          </Card>
+          </div>
 
-          {/* 6. Quick Revision Summary */}
-          <Card id="summary-sec-6" className="p-6 space-y-3">
+          {/* 6. Quick Revision Summary (Part 4.5: three key takeaways in a compact 3-column row, single column on mobile) */}
+          <div id="summary-sec-6" className="space-y-3 pt-2">
             <SectionHeader
               title="6. Quick Revision Summary"
               sectionId="revision_summary"
@@ -429,10 +489,34 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 6. Quick Revision Summary\n\n${result.quick_revision_summary}`}
             />
-            <p className="text-xs sm:text-sm text-ink leading-relaxed max-w-prose">
-              {result.quick_revision_summary}
-            </p>
-          </Card>
+            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+              Quick Revision Summary
+            </h3>
+            {(() => {
+              const summaryText = result.quick_revision_summary || "";
+              const sentences = summaryText
+                .split(/(?<=\.)\s+/)
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+              const takeaways = sentences.slice(0, 3);
+              if (takeaways.length === 0 && summaryText) takeaways.push(summaryText);
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                  {takeaways.map((takeaway, idx) => (
+                    <div key={idx} className="p-4 bg-canvas/40 border border-ink-border rounded-[6px] space-y-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-brand font-sans tabular-nums">
+                        Takeaway 0{idx + 1}
+                      </span>
+                      <p className="text-xs sm:text-[13px] text-ink leading-relaxed">
+                        {takeaway}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
 
           {/* Next Steps Cross-Tool Study (F4) */}
           <NextSteps

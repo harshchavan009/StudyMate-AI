@@ -1,5 +1,10 @@
 import { cn } from "@/lib/utils";
 
+/**
+ * ToolLayout: Responsive tool shell.
+ * Part 4.1: Input panel is sticky on the left at desktop (420px wide).
+ * The document panel on the right takes the remaining space.
+ */
 export function ToolLayout({
   title,
   description,
@@ -21,15 +26,15 @@ export function ToolLayout({
         )}
       </div>
 
-      {/* Split view at 1280px and wider, stacked below */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Input and Settings (sticky on wide screens - E4) */}
-        <div className="xl:col-span-5 space-y-4 xl:sticky xl:top-[72px] self-start">
+      {/* Desktop (lg and up): 420px sticky left column + flex-1 right document panel */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Column: Input and Settings (4.1: sticky on left at desktop, 420px wide) */}
+        <div className="w-full lg:w-[420px] lg:shrink-0 lg:sticky lg:top-[72px] self-start space-y-4">
           {inputPanel}
         </div>
 
-        {/* Right Column: Results & Documents */}
-        <div className="xl:col-span-7 space-y-4 min-w-0">
+        {/* Right Column: Document Panel taking remaining space */}
+        <div className="w-full flex-1 min-w-0 space-y-4">
           {resultPanel}
         </div>
       </div>

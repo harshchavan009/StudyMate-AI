@@ -242,7 +242,7 @@ export function DiffHighlighter({
                 <>
                   {group.removedText && (
                     <del
-                      className="line-through text-ink-subtle opacity-60 bg-[#FDF2F2] px-0.5 rounded select-text inline"
+                      className="line-through text-[#B3261E] bg-[#FDF2F2] px-1 rounded select-text inline border border-[#B3261E]/20"
                       title="Original phrasing removed"
                     >
                       {group.removedText}
@@ -250,7 +250,7 @@ export function DiffHighlighter({
                   )}
                   {group.addedText && (
                     <ins
-                      className="no-underline underline underline-offset-4 decoration-[#1F3FBF] bg-[#EEF1FB] text-[#1F3FBF] font-medium px-1 rounded select-text inline ml-0.5"
+                      className="no-underline bg-[#EAF5EF] text-[#1F7A4D] font-medium px-1 rounded select-text inline ml-0.5 border border-[#1F7A4D]/20"
                       title="AI improved phrasing accepted"
                     >
                       {group.addedText}
