@@ -43,33 +43,60 @@ const TOOLS = [
     key: "summarizer",
     path: "/summarizer",
     title: "Summarizer",
-    tag: "6-part structured summary",
-    description: "Convert lecture notes or textbook chapters into structured six-part summaries: overview, concepts, definitions, key points, exam notes, and revision points.",
-    icon: BookOpen,
+    description: "Convert lecture notes into a six-part structured academic summary.",
+    SvgDrawing: () => (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="shrink-0" aria-hidden="true">
+        <rect x="6" y="6" width="36" height="36" rx="4" stroke="#16181D" strokeWidth="1.5" />
+        <path d="M14 15H26" stroke="#1F3FBF" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 22H34" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 28H34" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 34H28" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
   },
   {
     key: "quiz",
     path: "/quiz",
     title: "Quiz Generator",
-    tag: "Multiple choice & flashcards",
-    description: "Convert study material into four-option multiple choice questions with progress tracking, immediate answers, and detailed rationales.",
-    icon: HelpCircle,
+    description: "Generate practice multiple-choice questions with answer rationales.",
+    SvgDrawing: () => (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="shrink-0" aria-hidden="true">
+        <rect x="8" y="6" width="32" height="36" rx="4" stroke="#16181D" strokeWidth="1.5" />
+        <path d="M16 16H24" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="18" cy="26" r="4" stroke="#16181D" strokeWidth="1.5" />
+        <path d="M26 26H32" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M16 26L18 28L23 22" stroke="#1F3FBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
     key: "improver",
     path: "/answer-improver",
     title: "Answer Improver",
-    tag: "Phrase-level word diffs",
-    description: "Paste your draft response to receive structural feedback, side-by-side wording refinements, and suggestions without introducing new claims.",
-    icon: PenLine,
+    description: "Refine draft responses with word-level revisions without inventing facts.",
+    SvgDrawing: () => (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="shrink-0" aria-hidden="true">
+        <rect x="6" y="6" width="36" height="36" rx="4" stroke="#16181D" strokeWidth="1.5" />
+        <path d="M14 18H28" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M12 18H30" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="1 3" />
+        <path d="M14 28H34" stroke="#1F3FBF" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M24 22L28 18L32 22" stroke="#1F3FBF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
     key: "explainer",
     path: "/concept-explainer",
     title: "Concept Explainer",
-    tag: "Multi-depth analogies",
-    description: "Break down difficult theories and mechanisms into step-by-step guides for beginner, intermediate, and advanced levels.",
-    icon: Lightbulb,
+    description: "Break down complex topics into step-by-step explanations for your level.",
+    SvgDrawing: () => (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="shrink-0" aria-hidden="true">
+        <circle cx="12" cy="14" r="4" stroke="#16181D" strokeWidth="1.5" />
+        <path d="M16 14H24V28H32" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="36" cy="28" r="4" stroke="#1F3FBF" strokeWidth="1.5" />
+        <path d="M36 32V38" stroke="#16181D" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
   },
 ];
 
@@ -370,114 +397,41 @@ export function Home() {
         </div>
       </motion.section>
 
-      {/* 2. Platform Value Metrics Strip */}
+      {/* 2. One Row of Four Dedicated Tool Tiles (2.1 & 2.2) */}
       <motion.section
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
-          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
-            <BookOpen className="w-4 h-4" strokeWidth={1.75} />
-          </div>
-          <span className="type-label text-ink-subtle block">Summaries</span>
-          <h4 className="font-serif text-base font-medium text-ink">6-Section Summaries</h4>
-          <p className="text-[11px] text-ink-secondary leading-relaxed">
-            Overview, concepts, definitions, rules, exam notes, and quick revision.
-          </p>
-        </div>
+        {TOOLS.map((t) => {
+          const SvgDrawing = t.SvgDrawing;
+          const lastUsed = lastUsedMap[t.key];
 
-        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
-          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
-            <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
-          </div>
-          <span className="type-label text-ink-subtle block">Quizzes</span>
-          <h4 className="font-serif text-base font-medium text-ink">Active-Recall Quizzes</h4>
-          <p className="text-[11px] text-ink-secondary leading-relaxed">
-            Four-option questions with keycaps, docked rationales, and review mode.
-          </p>
-        </div>
+          return (
+            <Link
+              key={t.path}
+              to={t.path}
+              className="p-5 bg-white border border-ink-border rounded-panel hover:border-brand transition-colors duration-150 flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                <SvgDrawing />
+                <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
+                  {t.title}
+                </h3>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  {t.description}
+                </p>
+              </div>
 
-        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
-          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
-            <PenLine className="w-4 h-4" strokeWidth={1.75} />
-          </div>
-          <span className="type-label text-ink-subtle block">Answer Polish</span>
-          <h4 className="font-serif text-base font-medium text-ink">Word-Level Redline</h4>
-          <p className="text-[11px] text-ink-secondary leading-relaxed">
-            Inline additions and deletions that elevate prose without inventing facts.
-          </p>
-        </div>
-
-        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
-          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
-            <ShieldCheck className="w-4 h-4 text-feedback-success" strokeWidth={1.75} />
-          </div>
-          <span className="type-label text-ink-subtle block">Privacy</span>
-          <h4 className="font-serif text-base font-medium text-ink">No Server Storage</h4>
-          <p className="text-[11px] text-ink-secondary leading-relaxed">
-            Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
-          </p>
-        </div>
-      </motion.section>
-
-      {/* 3. Four Dedicated Tool Tiles */}
-      <motion.section
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="space-y-3"
-      >
-        <div className="flex items-center justify-between">
-          <span className="type-label text-ink-subtle">Individual Study Tools</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TOOLS.map((t) => {
-            const Icon = t.icon;
-            const lastUsed = lastUsedMap[t.key];
-
-            return (
-              <Link
-                key={t.path}
-                to={t.path}
-                className="p-5 bg-white border border-ink-border rounded-panel hover:border-brand transition-colors duration-150 flex flex-col justify-between group h-full shadow-xs"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="w-9 h-9 rounded-[6px] bg-canvas flex items-center justify-center text-ink group-hover:text-brand transition-colors">
-                      <Icon className="w-4 h-4" strokeWidth={1.75} />
-                    </div>
-                    {lastUsed && (
-                      <span className="text-[11px] text-ink-subtle flex items-center gap-1">
-                        <Clock className="w-3 h-3" strokeWidth={1.75} />
-                        {lastUsed}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-serif text-[20px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
-                    {t.title}
-                  </h3>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand block">
-                    {t.tag}
-                  </span>
-                  <p className="text-xs text-ink-secondary leading-relaxed line-clamp-3">
-                    {t.description}
-                  </p>
+              {lastUsed && (
+                <div className="pt-2 text-[11px] text-ink-subtle">
+                  Last used {lastUsed}
                 </div>
-
-                <div className="pt-4 mt-3 border-t border-ink-border/50 flex items-center justify-between text-xs font-medium text-brand">
-                  <span>Open tool</span>
-                  <ArrowRight
-                    className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1"
-                    strokeWidth={1.75}
-                  />
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+              )}
+            </Link>
+          );
+        })}
       </motion.section>
 
       {/* 4. Active Dashboard Modules (Rendered when history exists) */}
@@ -843,107 +797,111 @@ export function Home() {
         </div>
       )}
 
-      {/* 5. Topic Transformation Pipeline Showcase */}
-      <motion.section
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="space-y-4 pt-6 border-t border-ink-border"
-        data-testid="transformation-pipeline"
-      >
-        <div className="space-y-1">
-          <span className="type-label text-ink-subtle">Transformation Pipeline</span>
-          <h2 className="type-section text-ink">Turn raw lecture notes into academic assets</h2>
-          <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
-            Watch how unstructured notes are processed into structured academic study documents through a 3-step pipeline.
-          </p>
-        </div>
-
-        <div className="p-6 bg-white border border-ink-border rounded-panel document-panel-shadow">
-          <NotesToStructureDiagram className="w-full overflow-hidden" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
-              01
+      {/* 5. First-Time State: Topic Transformation Pipeline, How It Works, and Reference Output (2.3) */}
+      {isFirstTime && (
+        <div className="space-y-10 pt-4 border-t border-ink-border" data-testid="first-time-onboarding">
+          <motion.section
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+            className="space-y-4"
+            data-testid="transformation-pipeline"
+          >
+            <div className="space-y-1">
+              <span className="type-label text-ink-subtle">Transformation Pipeline</span>
+              <h2 className="type-section text-ink">Turn raw lecture notes into academic assets</h2>
+              <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
+                Watch how unstructured notes are processed into structured academic study documents through a 3-step pipeline.
+              </p>
             </div>
-            <h3 className="text-sm font-semibold text-ink">
-              Paste notes or enter a topic
-            </h3>
-            <p className="text-xs text-ink-secondary leading-relaxed">
-              Provide your raw study notes, draft answer, or target concept to begin.
-            </p>
-          </div>
 
-          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
-              02
+            <div className="p-6 bg-white border border-ink-border rounded-panel document-panel-shadow">
+              <NotesToStructureDiagram className="w-full overflow-hidden" />
             </div>
-            <h3 className="text-sm font-semibold text-ink">
-              Select dedicated study tools
-            </h3>
-            <p className="text-xs text-ink-secondary leading-relaxed">
-              Generate structured summaries, practice multiple-choice questions, or word-level improvements.
-            </p>
-          </div>
 
-          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
-            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
-              03
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+                  01
+                </div>
+                <h3 className="text-sm font-semibold text-ink">
+                  Paste notes or enter a topic
+                </h3>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Provide your raw study notes, draft answer, or target concept to begin.
+                </p>
+              </div>
+
+              <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+                  02
+                </div>
+                <h3 className="text-sm font-semibold text-ink">
+                  Select dedicated study tools
+                </h3>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Generate structured summaries, practice multiple-choice questions, or word-level improvements.
+                </p>
+              </div>
+
+              <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+                  03
+                </div>
+                <h3 className="text-sm font-semibold text-ink">
+                  Master material with active recall
+                </h3>
+                <p className="text-xs text-ink-secondary leading-relaxed">
+                  Take practice quizzes, flip cards, review explanations, and export formatted Markdown.
+                </p>
+              </div>
             </div>
-            <h3 className="text-sm font-semibold text-ink">
-              Master material with active recall
-            </h3>
-            <p className="text-xs text-ink-secondary leading-relaxed">
-              Take practice quizzes, flip cards, review explanations, and export formatted Markdown.
-            </p>
-          </div>
-        </div>
-      </motion.section>
+          </motion.section>
 
-      {/* 6. Interactive Reference Output Composition */}
-      <motion.section
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="space-y-4 pt-6 border-t border-ink-border"
-        data-testid="reference-showcase"
-      >
-        <div className="space-y-1">
-          <span className="type-label text-ink-subtle">Output Quality Reference</span>
-          <h2 className="type-section text-ink">Live Example: Real Gemini 1.5 Academic Summary</h2>
-          <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
-            Inspect the exact formatting, depth, and academic structure generated by StudyMate AI on real lecture material.
-          </p>
-        </div>
+          {/* Reference Output Quality Showcase */}
+          <motion.section
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+            className="space-y-4 pt-6 border-t border-ink-border"
+            data-testid="reference-showcase"
+          >
+            <div className="space-y-1">
+              <span className="type-label text-ink-subtle">Output Quality Reference</span>
+              <h2 className="type-section text-ink">Live Example: Real Gemini 1.5 Academic Summary</h2>
+              <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
+                Inspect the exact formatting, depth, and academic structure generated by StudyMate AI on real lecture material.
+              </p>
+            </div>
 
-        <div className="max-w-3xl bg-white rounded-panel border border-ink-border p-4 document-panel-shadow">
-          <AnimatedHeroComposition />
-        </div>
-      </motion.section>
+            <div className="max-w-3xl bg-white rounded-panel border border-ink-border p-4 document-panel-shadow">
+              <AnimatedHeroComposition />
+            </div>
+          </motion.section>
 
-      {/* 7. Frequently Asked Questions */}
-      <motion.section
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="space-y-4 pt-6 border-t border-ink-border"
-      >
-        <div className="space-y-1">
-          <span className="type-label text-ink-subtle">Frequently Asked Questions</span>
-          <h2 className="type-section text-ink">Everything you need to know</h2>
-          <p className="text-xs text-ink-secondary">
-            Clear information about data handling, schema checks, and usage limits.
-          </p>
-        </div>
+          {/* Frequently Asked Questions */}
+          <motion.section
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+            className="space-y-4 pt-6 border-t border-ink-border"
+          >
+            <div className="space-y-1">
+              <span className="type-label text-ink-subtle">Frequently Asked Questions</span>
+              <h2 className="type-section text-ink">Everything you need to know</h2>
+              <p className="text-xs text-ink-secondary">
+                Clear information about data handling, schema checks, and usage limits.
+              </p>
+            </div>
 
-        <div className="divide-y divide-ink-border border-y border-ink-border">
-          {FAQS.map((faq, idx) => (
-            <FaqItem key={idx} q={faq.q} a={faq.a} />
-          ))}
+            <div className="divide-y divide-ink-border border-y border-ink-border">
+              {FAQS.map((faq, idx) => (
+                <FaqItem key={idx} q={faq.q} a={faq.a} />
+              ))}
+            </div>
+          </motion.section>
         </div>
-      </motion.section>
+      )}
 
       {/* 8. Data Handling & Privacy Notice */}
       <motion.section
