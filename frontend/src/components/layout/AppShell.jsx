@@ -98,47 +98,22 @@ export function AppShell() {
             sidebarCollapsed ? "lg:pl-16" : "lg:pl-[248px]"
           )}
         >
-          {/* Top Bar: sticky, 56px (h-14) with Progressive Blur edge (M7) */}
+          {/* Top Bar: sticky, 56px (h-14) with Progressive Blur edge (M7, 1.7, 2.2) */}
           <div className="sticky top-0 z-20">
-            <header className="h-14 border-b border-ink-border bg-white/95 backdrop-blur-sm px-4 sm:px-8 flex items-center justify-between shrink-0">
+            <header className="h-14 bg-transparent px-4 sm:px-8 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                {/* Mobile hamburger button (< 1024px) opens drawer; desktop button collapses sidebar */}
+                {/* Mobile hamburger button (< 1024px) opens drawer */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.innerWidth < 1024) {
-                      setDrawerOpen(!drawerOpen);
-                    } else {
-                      setSidebarCollapsed(!sidebarCollapsed);
-                    }
-                  }}
-                  className="p-1.5 rounded-md hover:bg-black/5 text-ink-secondary hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  aria-label={
-                    drawerOpen
-                      ? "Close navigation drawer"
-                      : sidebarCollapsed
-                      ? "Expand sidebar"
-                      : "Toggle navigation"
-                  }
+                  onClick={() => setDrawerOpen(!drawerOpen)}
+                  className="lg:hidden p-1.5 rounded-md hover:bg-black/5 text-ink-secondary hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  aria-label={drawerOpen ? "Close navigation drawer" : "Open navigation drawer"}
                 >
                   <Menu className="w-4 h-4" strokeWidth={1.75} />
                 </button>
-
-                {/* Minimal Breadcrumb */}
-                <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-ink-secondary">
-                  <Link to="/" className="hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded">
-                    Home
-                  </Link>
-                  {location.pathname !== "/" && (
-                    <>
-                      <ChevronRight className="w-3.5 h-3.5 text-ink-subtle" strokeWidth={1.75} />
-                      <span className="text-ink font-medium">{currentToolName}</span>
-                    </>
-                  )}
-                </nav>
               </div>
 
-              {/* Right Header: Search Shortcut + Real 3-State Backend Health Indicator */}
+              {/* Right Header: Search Shortcut + Real 3-State Backend Health Indicator (1.7) */}
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
