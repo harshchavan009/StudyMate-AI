@@ -282,11 +282,6 @@ export function Home() {
         transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
         className="space-y-6 pt-2"
       >
-        {/* System Announcement Pill */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[6px] text-xs font-medium bg-brand-tint border border-brand/20 text-brand">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-          <span>StudyMate AI · Local-First Academic Intelligence</span>
-        </div>
 
         {/* Headline */}
         <div className="space-y-3">
@@ -369,7 +364,7 @@ export function Home() {
             </div>
 
             <span className="text-xs text-ink-subtle hidden sm:inline">
-              Instant academic structuring without cloud storage
+              Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
             </span>
           </div>
         </div>
@@ -419,10 +414,10 @@ export function Home() {
           <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
             <ShieldCheck className="w-4 h-4 text-feedback-success" strokeWidth={1.75} />
           </div>
-          <span className="type-label text-ink-subtle block">Privacy Guarantee</span>
-          <h4 className="font-serif text-base font-medium text-ink">100% Local-First</h4>
+          <span className="type-label text-ink-subtle block">Privacy</span>
+          <h4 className="font-serif text-base font-medium text-ink">No Server Storage</h4>
           <p className="text-[11px] text-ink-secondary leading-relaxed">
-            Zero cloud databases. Sessions and sets live strictly in your browser.
+            Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
           </p>
         </div>
       </motion.section>
@@ -950,7 +945,7 @@ export function Home() {
         </div>
       </motion.section>
 
-      {/* 8. Local Storage Privacy Guarantee Banner */}
+      {/* 8. Data Handling & Privacy Notice */}
       <motion.section
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -959,9 +954,9 @@ export function Home() {
       >
         <ShieldCheck className="w-5 h-5 text-feedback-success shrink-0 mt-0.5" strokeWidth={1.75} />
         <div className="space-y-1.5 text-xs">
-          <h3 className="font-serif text-sm font-semibold text-ink">Local-First Storage Guarantee</h3>
+          <h3 className="font-serif text-sm font-semibold text-ink">Data Handling and Privacy</h3>
           <p className="text-ink-secondary leading-relaxed max-w-2xl">
-            All session history and study sets are stored strictly inside your browser's localStorage. No tracking cookies, no accounts, and no backend databases are employed. Your study material remains yours.
+            Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
           </p>
           <div className="pt-1">
             <Link to="/privacy" className="text-brand hover:underline font-medium inline-flex items-center gap-1">

@@ -21,6 +21,9 @@ export function PrivacyPolicy() {
           <p>
             StudyMate AI ("we", "our", or "the application") is an educational tool designed to summarize study materials, generate practice quizzes, provide feedback on draft answers, and explain academic concepts. This Privacy Policy outlines how your information is handled when you use the service.
           </p>
+          <p className="font-medium text-ink">
+            Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
+          </p>
         </section>
 
         <section>

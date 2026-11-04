@@ -152,9 +152,9 @@ export function Help() {
       <section className="p-5 bg-white border border-ink-border rounded-panel flex items-start gap-4">
         <ShieldCheck className="w-5 h-5 text-feedback-success shrink-0 mt-0.5" strokeWidth={1.75} />
         <div className="space-y-1 text-xs">
-          <p className="font-semibold text-ink">Local-First Storage Guarantee</p>
+          <p className="font-semibold text-ink">Data Handling and Privacy</p>
           <p className="text-ink-secondary leading-relaxed">
-            All session history and study sets are stored strictly inside your browser's localStorage. No cookies, no user accounts, and no tracking databases are employed. Clear your history at any time from Home or individual tool pages.
+            Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser.
           </p>
           <div className="pt-2">
             <Link to="/privacy" className="text-brand hover:underline font-medium inline-flex items-center gap-1">
