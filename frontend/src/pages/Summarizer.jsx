@@ -356,7 +356,7 @@ export function Summarizer() {
     >
       {result && (
         <AnimatedGroup stagger={0.06} className="space-y-8">
-          {/* 1. Topic Overview (Part 4.5: 20px serif heading, 17px body) */}
+          {/* 1. Topic Overview (Part 4.4: 24px serif heading, 17px body) */}
           <div id="summary-sec-1" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="1. Topic Overview"
@@ -366,15 +366,12 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 1. Topic Overview\n\n${result.topic_overview}`}
             />
-            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
-              Topic Overview
-            </h3>
             <p className="text-[17px] leading-[1.65] text-ink max-w-prose">
               {result.topic_overview}
             </p>
           </div>
 
-          {/* 2. Key Concepts (Part 4.5: large light numerals 40px serif #C9C4B8, concept name semibold, explanation below) */}
+          {/* 2. Key Concepts (Part 4.4: large light numerals 40px serif #C9C4B8, concept name semibold, explanation below) */}
           <div id="summary-sec-2" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="2. Key Concepts"
@@ -383,9 +380,6 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 2. Key Concepts\n\n${result.key_concepts?.map((c) => `- ${c}`).join("\n")}`}
             />
-            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
-              Key Concepts
-            </h3>
             <div className="space-y-4 pt-1">
               {result.key_concepts?.map((concept, idx) => {
                 const parts = concept.split(/:\s*|—\s*|-\s*/);
@@ -410,7 +404,7 @@ export function Summarizer() {
             </div>
           </div>
 
-          {/* 3. Important Definitions (Part 4.5: definition list with 1px hairline between items; term in semibold, definition indented) */}
+          {/* 3. Important Definitions (Part 4.4: definition list with 1px hairline between items; term in semibold, definition indented) */}
           <div id="summary-sec-3" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="3. Important Definitions"
@@ -419,9 +413,6 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 3. Important Definitions\n\n${result.important_definitions?.map((d) => `### ${d.term}\n${d.definition}`).join("\n\n")}`}
             />
-            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
-              Important Definitions
-            </h3>
             <dl className="divide-y divide-ink-border pt-1">
               {result.important_definitions?.map((item, idx) => (
                 <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1">
@@ -436,7 +427,7 @@ export function Summarizer() {
             </dl>
           </div>
 
-          {/* 4. Important Points (Part 4.5: 6px accent square bullets, not round bullets) */}
+          {/* 4. Important Points (Part 4.4: 6px accent square bullets, not round bullets) */}
           <div id="summary-sec-4" className="space-y-3 pb-6 border-b border-ink-border">
             <SectionHeader
               title="4. Important Points"
@@ -445,9 +436,6 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 4. Important Points\n\n${result.important_points?.map((p) => `- ${p}`).join("\n")}`}
             />
-            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
-              Important Points
-            </h3>
             <ul className="space-y-3 pt-1 text-[15px] sm:text-[17px] leading-[1.65] text-ink">
               {result.important_points?.map((point, idx) => (
                 <li key={idx} className="flex items-start gap-3">
@@ -458,7 +446,7 @@ export function Summarizer() {
             </ul>
           </div>
 
-          {/* 5. Exam Preparation Notes (Part 4.5: light tinted panel with a 3px accent left border) */}
+          {/* 5. Exam Preparation Notes (Part 4.4: light tinted panel with a 3px accent left border) */}
           <div id="summary-sec-5" className="p-5 bg-brand-tint/30 border-l-[3px] border-l-brand border-y border-r border-ink-border rounded-r-[6px] space-y-3">
             <SectionHeader
               title="5. Exam Preparation Notes"
@@ -467,9 +455,6 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 5. Exam Preparation Notes\n\n${result.exam_preparation_notes?.map((n) => `- ${n}`).join("\n")}`}
             />
-            <h3 className="font-serif text-[18px] font-medium text-ink">
-              Exam Preparation Notes
-            </h3>
             <ul className="space-y-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
               {result.exam_preparation_notes?.map((note, idx) => (
                 <li key={idx} className="flex items-start gap-2.5">
@@ -480,7 +465,7 @@ export function Summarizer() {
             </ul>
           </div>
 
-          {/* 6. Quick Revision Summary (Part 4.5: three key takeaways in a compact 3-column row, single column on mobile) */}
+          {/* 6. Quick Revision Summary (Part 4.4: three key takeaways in a compact 3-column row, single column on mobile) */}
           <div id="summary-sec-6" className="space-y-3 pt-2">
             <SectionHeader
               title="6. Quick Revision Summary"
@@ -489,9 +474,6 @@ export function Summarizer() {
               onToggleReviewed={handleToggleReviewed}
               copyContent={`## 6. Quick Revision Summary\n\n${result.quick_revision_summary}`}
             />
-            <h3 className="font-serif text-[20px] font-medium text-ink leading-snug">
-              Quick Revision Summary
-            </h3>
             {(() => {
               const summaryText = result.quick_revision_summary || "";
               const sentences = summaryText

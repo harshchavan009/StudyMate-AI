@@ -11,12 +11,18 @@ import {
   CheckCircle2,
   RotateCcw,
   Sparkles,
+  Layers,
+  ShieldCheck,
+  Zap,
+  GraduationCap,
+  ChevronDown,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { FieldCounter } from "@/components/ui/FieldCounter";
 import { AnimatedHeroComposition } from "@/components/home/AnimatedHeroComposition";
 import { NotesToStructureDiagram } from "@/components/home/NotesToStructureDiagram";
+import { Disclosure, DisclosureTrigger, DisclosureContent } from "@/components/motion/Disclosure";
 import { usePageMeta } from "@/lib/usePageMeta";
 import {
   getRecentSessions,
@@ -37,29 +43,75 @@ const TOOLS = [
     key: "summarizer",
     path: "/summarizer",
     title: "Summarizer",
-    description: "Convert notes or textbook excerpts into structured six-part summaries.",
+    tag: "6-part structured summary",
+    description: "Convert lecture notes or textbook chapters into structured six-part summaries: overview, concepts, definitions, key points, exam notes, and revision points.",
     icon: BookOpen,
   },
   {
     key: "quiz",
     path: "/quiz",
     title: "Quiz Generator",
-    description: "Generate multiple-choice practice questions with detailed explanations.",
+    tag: "Multiple choice & flashcards",
+    description: "Convert study material into four-option multiple choice questions with progress tracking, immediate answers, and detailed rationales.",
     icon: HelpCircle,
   },
   {
     key: "improver",
     path: "/answer-improver",
     title: "Answer Improver",
-    description: "Refine draft answers with critique, elevated vocabulary, and revisions.",
+    tag: "Phrase-level word diffs",
+    description: "Paste your draft response to receive structural feedback, side-by-side wording refinements, and suggestions without introducing new claims.",
     icon: PenLine,
   },
   {
     key: "explainer",
     path: "/concept-explainer",
     title: "Concept Explainer",
-    description: "Break down difficult academic terms with analogies and real-world examples.",
+    tag: "Multi-depth analogies",
+    description: "Break down difficult theories and mechanisms into step-by-step guides for beginner, intermediate, and advanced levels.",
     icon: Lightbulb,
+  },
+];
+
+const PRESETS = [
+  {
+    label: "DNS & Networking",
+    subject: "Computer Science",
+    text: exampleData?.source_text || "The Domain Name System (DNS) is a hierarchical and decentralized naming system used to identify computers, services, and other resources reachable through the Internet. It translates domain names to numerical IP addresses needed for network protocols. By designating authoritative name servers, DNS implements a distributed, fault-tolerant directory service.",
+  },
+  {
+    label: "Cellular Respiration",
+    subject: "Biology",
+    text: "Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power biochemical reactions. This chemical energy is stored in a small molecule called adenosine triphosphate (ATP). Cellular respiration proceeds through three major stages: glycolysis in the cytosol, the citric acid cycle in the mitochondrial matrix, and oxidative phosphorylation along the inner mitochondrial membrane. The electron transport chain creates a proton gradient across the inner membrane, which drives ATP synthase to produce ATP through chemiosmosis.",
+  },
+  {
+    label: "Monetary Policy",
+    subject: "Economics",
+    text: "Monetary policy is the policy adopted by the monetary authority of a nation to control either the interest rate payable for very short-term borrowing or the money supply. The primary goals of monetary policy are typically to maintain price stability and achieve sustainable economic growth. Central banks use tools such as open market operations, reserve requirements, and the discount rate to influence the cost and availability of money and credit in the economy.",
+  },
+  {
+    label: "Judicial Review",
+    subject: "Law",
+    text: "Judicial review is the power of courts to examine the actions of the legislative, executive, and administrative arms of the government and to determine whether such actions are consistent with the constitution. In the United States, judicial review was established in the landmark 1803 Supreme Court case Marbury v. Madison. Under this doctrine, any legislative act or executive action that conflicts with the constitution is deemed null and void.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "How does StudyMate AI process text and handle data?",
+    a: "Your study material is sent over an encrypted HTTPS connection to our backend and passed to the Google Gemini API using structured academic prompts. On free API tiers, Google may use prompt and output data to train models per Google Generative AI terms. Do not submit sensitive personal or confidential information. We do not store your inputs on any database.",
+  },
+  {
+    q: "Are my study notes or personal answers saved on a database?",
+    a: "No. StudyMate AI does not use a cloud database or user accounts. All processing happens in-memory for the duration of the request. Recent session history is saved locally in your own browser using localStorage, and you can clear it anytime.",
+  },
+  {
+    q: "How are quizzes checked?",
+    a: "Every quiz is checked programmatically against a schema requiring four options and a valid answer index. Quizzes check structural shape, not factual accuracy against outside reality. Always check answers against your course material.",
+  },
+  {
+    q: "What are the input character limits?",
+    a: "To ensure fast and reliable responses, study notes accept 20 to 10,000 characters, student answers accept 10 to 5,000 characters, and concept queries accept 3 to 300 characters. These limits are served dynamically from the backend configuration.",
   },
 ];
 
@@ -70,9 +122,30 @@ const TOOL_PATH_MAP = {
   explainer: "/concept-explainer",
 };
 
-/**
- * Custom hook to count up a number over a specified duration (Part 3.5: 600ms count-up)
- */
+function FaqItem({ q, a }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Disclosure open={isOpen} onOpenChange={setIsOpen} className="py-4">
+      <DisclosureTrigger className="w-full flex items-center justify-between text-left group gap-4 cursor-pointer">
+        <span className="text-sm font-medium text-ink group-hover:text-brand transition-colors">
+          {q}
+        </span>
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 text-ink-subtle group-hover:text-ink transition-transform duration-200 shrink-0",
+            isOpen && "rotate-180 text-brand"
+          )}
+          strokeWidth={1.75}
+        />
+      </DisclosureTrigger>
+      <DisclosureContent className="pt-2 text-xs text-ink-secondary leading-relaxed">
+        <p>{a}</p>
+      </DisclosureContent>
+    </Disclosure>
+  );
+}
+
 function useCountUp(target, duration = 600) {
   const [val, setVal] = useState(0);
 
@@ -87,7 +160,6 @@ function useCountUp(target, duration = 600) {
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // easeOutQuad
       const ease = 1 - Math.pow(1 - progress, 2);
       setVal(Math.round(ease * target));
       if (progress < 1) {
@@ -134,7 +206,6 @@ export function Home() {
 
   useEffect(() => {
     loadData();
-    // Trigger chart bar growth (Part 3.5: 320ms)
     const t = setTimeout(() => setChartAnimated(true), 50);
     return () => clearTimeout(t);
   }, []);
@@ -153,17 +224,19 @@ export function Home() {
       : 0;
   const animatedAvgScore = useCountUp(avgQuizScore, 600);
 
-  // Missed questions from most recent attempt
   const latestMissed = getLatestMissedQuestions();
-
-  // Continue session (most recent study set or session)
   const latestSet = studySets[0] || null;
   const latestSession = recentSessions[0] || null;
 
   const handleStartStudySet = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (input.trim().length < 20 || input.length > 10000) return;
     navigate("/study-set", { state: { sourceText: input } });
+  };
+
+  const handleSelectPreset = (preset) => {
+    setInput(preset.text);
+    setIsTouched(true);
   };
 
   const handleTryExample = () => {
@@ -201,28 +274,53 @@ export function Home() {
   };
 
   return (
-    <div className="space-y-10 py-2 max-w-6xl">
-      {/* 3.1 Header & Compact Input Panel */}
-      <motion.header
+    <div className="space-y-12 py-2 max-w-6xl">
+      {/* 1. Hero & Quick Study Launcher */}
+      <motion.section
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-        className="space-y-4"
+        className="space-y-6 pt-2"
       >
-        <div className="space-y-2">
-          <h1 className="type-dashboard-title text-ink">
+        {/* System Announcement Pill */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[6px] text-xs font-medium bg-brand-tint border border-brand/20 text-brand">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+          <span>StudyMate AI · Local-First Academic Intelligence</span>
+        </div>
+
+        {/* Headline */}
+        <div className="space-y-3">
+          <h1 className="type-dashboard-title text-ink max-w-3xl">
             What are you studying today?
           </h1>
-          <p className="text-base text-ink-secondary leading-relaxed max-w-2xl">
+          <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-2xl">
             Turn lecture notes, readings, and drafts into structured summaries, active-recall quizzes, sentence improvements, and concept explanations.
           </p>
         </div>
 
-        {/* Compact input panel */}
-        <div className="p-5 bg-white border border-ink-border rounded-panel space-y-3 shadow-none">
-          <label htmlFor="quick-study-input" className="type-label text-ink block">
-            Paste Notes or Passage
-          </label>
+        {/* Compact Quick Study Input Panel */}
+        <div className="p-6 bg-white border border-ink-border rounded-panel space-y-4 document-panel-shadow">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="quick-study-input" className="type-label text-ink block">
+              Paste Notes or Passage
+            </label>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-ink-subtle">Quick Presets:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESETS.map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectPreset(p)}
+                    className="px-2 py-0.5 rounded-[4px] border border-ink-border bg-canvas/40 hover:bg-brand-tint hover:border-brand/40 text-[11px] font-medium text-ink transition-colors cursor-pointer"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <textarea
             id="quick-study-input"
             value={input}
@@ -230,9 +328,9 @@ export function Home() {
               setInput(e.target.value);
               setIsTouched(true);
             }}
-            placeholder="Paste lecture notes, study guide, or a passage to study (20 to 10,000 characters)..."
-            rows={3}
-            className="w-full text-sm font-sans p-3 rounded-[6px] border border-ink-border bg-canvas/30 text-ink placeholder:text-ink-subtle focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-colors resize-y min-h-[90px]"
+            placeholder="Paste lecture notes, study guide, or a textbook excerpt here (20 to 10,000 characters)..."
+            rows={4}
+            className="w-full text-sm font-sans p-3.5 rounded-[6px] border border-ink-border bg-canvas/30 text-ink placeholder:text-ink-subtle focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-colors resize-y min-h-[100px] leading-relaxed"
           />
 
           <FieldCounter
@@ -243,7 +341,7 @@ export function Home() {
             disabledReason="Enter at least 20 characters to start."
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-ink-border/50">
             <div className="flex items-center gap-3">
               <Button
                 variant="primary"
@@ -255,22 +353,81 @@ export function Home() {
                 <ArrowRight className="w-4 h-4 ml-1.5" strokeWidth={1.75} />
               </Button>
 
+              <Link to="/summarizer">
+                <Button variant="secondary" size="md">
+                  <span>Open Summarizer</span>
+                </Button>
+              </Link>
+
               <button
                 type="button"
                 onClick={handleTryExample}
-                className="text-xs text-brand hover:underline font-medium cursor-pointer"
+                className="text-xs text-brand hover:underline font-medium cursor-pointer ml-1"
               >
                 Try an example
               </button>
             </div>
+
             <span className="text-xs text-ink-subtle hidden sm:inline">
-              Or jump into an individual tool below
+              Instant academic structuring without cloud storage
             </span>
           </div>
         </div>
-      </motion.header>
+      </motion.section>
 
-      {/* 3.2 Four Tool Tiles for Quick Navigation */}
+      {/* 2. Platform Value Metrics Strip */}
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
+          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
+            <BookOpen className="w-4 h-4" strokeWidth={1.75} />
+          </div>
+          <span className="type-label text-ink-subtle block">Output Engine</span>
+          <h4 className="font-serif text-base font-medium text-ink">6-Section Summaries</h4>
+          <p className="text-[11px] text-ink-secondary leading-relaxed">
+            Overview, concepts, definitions, rules, exam notes, and quick revision.
+          </p>
+        </div>
+
+        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
+          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
+            <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
+          </div>
+          <span className="type-label text-ink-subtle block">Recall Engine</span>
+          <h4 className="font-serif text-base font-medium text-ink">Active-Recall Quizzes</h4>
+          <p className="text-[11px] text-ink-secondary leading-relaxed">
+            Four-option questions with keycaps, docked rationales, and review mode.
+          </p>
+        </div>
+
+        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
+          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
+            <PenLine className="w-4 h-4" strokeWidth={1.75} />
+          </div>
+          <span className="type-label text-ink-subtle block">Refinement Engine</span>
+          <h4 className="font-serif text-base font-medium text-ink">Word-Level Redline</h4>
+          <p className="text-[11px] text-ink-secondary leading-relaxed">
+            Inline additions and deletions that elevate prose without inventing facts.
+          </p>
+        </div>
+
+        <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1">
+          <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
+            <ShieldCheck className="w-4 h-4 text-feedback-success" strokeWidth={1.75} />
+          </div>
+          <span className="type-label text-ink-subtle block">Privacy Guarantee</span>
+          <h4 className="font-serif text-base font-medium text-ink">100% Local-First</h4>
+          <p className="text-[11px] text-ink-secondary leading-relaxed">
+            Zero cloud databases. Sessions and sets live strictly in your browser.
+          </p>
+        </div>
+      </motion.section>
+
+      {/* 3. Four Dedicated Tool Tiles */}
       <motion.section
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -290,11 +447,11 @@ export function Home() {
               <Link
                 key={t.path}
                 to={t.path}
-                className="p-4 bg-white border border-ink-border rounded-panel hover:border-brand transition-colors duration-150 flex flex-col justify-between group h-full"
+                className="p-5 bg-white border border-ink-border rounded-panel hover:border-brand transition-colors duration-150 flex flex-col justify-between group h-full shadow-xs"
               >
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-[6px] bg-canvas flex items-center justify-center text-ink group-hover:text-brand transition-colors">
+                    <div className="w-9 h-9 rounded-[6px] bg-canvas flex items-center justify-center text-ink group-hover:text-brand transition-colors">
                       <Icon className="w-4 h-4" strokeWidth={1.75} />
                     </div>
                     {lastUsed && (
@@ -307,12 +464,15 @@ export function Home() {
                   <h3 className="font-serif text-[20px] font-medium text-ink group-hover:text-brand transition-colors leading-snug">
                     {t.title}
                   </h3>
-                  <p className="text-xs text-ink-secondary leading-relaxed line-clamp-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand block">
+                    {t.tag}
+                  </span>
+                  <p className="text-xs text-ink-secondary leading-relaxed line-clamp-3">
                     {t.description}
                   </p>
                 </div>
 
-                <div className="pt-3 mt-2 border-t border-ink-border/50 flex items-center justify-between text-xs font-medium text-brand">
+                <div className="pt-4 mt-3 border-t border-ink-border/50 flex items-center justify-between text-xs font-medium text-brand">
                   <span>Open tool</span>
                   <ArrowRight
                     className="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-1"
@@ -325,68 +485,7 @@ export function Home() {
         </div>
       </motion.section>
 
-      {/* 3.4 First-Time State: Compact How It Works Strip & Example Output */}
-      {isFirstTime && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
-          className="space-y-10 pt-4 border-t border-ink-border"
-          data-testid="first-time-state"
-        >
-          {/* How It Works Strip */}
-          <section className="space-y-4">
-            <div className="space-y-1">
-              <span className="type-label text-ink-subtle">How It Works</span>
-              <h2 className="type-section text-ink">Turn notes into structured study aids</h2>
-              <p className="text-xs text-ink-secondary">
-                StudyMate AI parses lecture notes and textbook passages without storing them on a remote server.
-              </p>
-            </div>
-
-            <div className="p-6 bg-white border border-ink-border rounded-panel">
-              <NotesToStructureDiagram className="w-full overflow-hidden" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-              <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1.5">
-                <span className="font-sans tabular-nums text-xs font-semibold text-brand">01</span>
-                <h3 className="text-sm font-semibold text-ink">Paste your material</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Provide raw text from lectures, readings, or exam review sheets.
-                </p>
-              </div>
-              <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1.5">
-                <span className="font-sans tabular-nums text-xs font-semibold text-brand">02</span>
-                <h3 className="text-sm font-semibold text-ink">Select a study objective</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Generate a structured summary, multiple-choice quiz, or term explanation.
-                </p>
-              </div>
-              <div className="p-4 bg-white border border-ink-border rounded-panel space-y-1.5">
-                <span className="font-sans tabular-nums text-xs font-semibold text-brand">03</span>
-                <h3 className="text-sm font-semibold text-ink">Review and practice</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Test your recall, review definitions, and export clean Markdown notes.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Stored Example Output */}
-          <section className="space-y-4 pt-4 border-t border-ink-border">
-            <div className="space-y-1">
-              <span className="type-label text-ink-subtle">Sample Output</span>
-              <h2 className="type-section text-ink">Example output from a DNS lecture</h2>
-            </div>
-            <div className="max-w-2xl bg-white rounded-panel border border-ink-border p-2">
-              <AnimatedHeroComposition />
-            </div>
-          </section>
-        </motion.div>
-      )}
-
-      {/* 3.3 Real Data Modules (Only rendered if history exists) */}
+      {/* 4. Active Dashboard Modules (Rendered when history exists) */}
       {!isFirstTime && (
         <div className="space-y-8 pt-4 border-t border-ink-border" data-testid="dashboard-data-modules">
           {/* Continue Module */}
@@ -419,7 +518,6 @@ export function Home() {
                     <h3 className="font-serif text-[18px] font-medium text-ink group-hover:text-brand transition-colors truncate">
                       {latestSet.title}
                     </h3>
-                    {/* Chips for outputs */}
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       {latestSet.outputs?.summary && (
                         <span className="text-xs px-2 py-0.5 rounded-[4px] bg-canvas text-ink border border-ink-border">
@@ -482,9 +580,8 @@ export function Home() {
             </motion.section>
           )}
 
-          {/* Grid: Quiz Scores SVG Bar Chart & This Week 7-Day Strip */}
+          {/* Grid: Quiz Scores SVG Bar Chart & This Week Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Quiz scores inline SVG bar chart */}
             {recentQuizAttempts.length > 0 && (
               <motion.section
                 initial={{ opacity: 0, y: 6 }}
@@ -501,36 +598,27 @@ export function Home() {
                 </div>
 
                 <div className="p-5 bg-white border border-ink-border rounded-panel space-y-4">
-                  {/* Inline SVG Bar Chart */}
                   <div className="relative w-full h-[160px]">
-                    <svg
-                      viewBox="0 0 420 140"
-                      className="w-full h-full overflow-visible"
-                      aria-hidden="true"
-                    >
-                      {/* Grid lines and y-axis labels */}
+                    <svg viewBox="0 0 420 140" className="w-full h-full overflow-visible" aria-hidden="true">
                       <line x1="36" y1="20" x2="410" y2="20" stroke="rgba(22,24,29,0.08)" strokeDasharray="3 3" />
                       <text x="30" y="24" textAnchor="end" className="text-[10px] fill-[#5B6070] font-sans">
                         100%
                       </text>
-
                       <line x1="36" y1="70" x2="410" y2="70" stroke="rgba(22,24,29,0.08)" strokeDasharray="3 3" />
                       <text x="30" y="74" textAnchor="end" className="text-[10px] fill-[#5B6070] font-sans">
                         50%
                       </text>
-
                       <line x1="36" y1="120" x2="410" y2="120" stroke="rgba(22,24,29,0.15)" />
                       <text x="30" y="124" textAnchor="end" className="text-[10px] fill-[#5B6070] font-sans">
                         0%
                       </text>
 
-                      {/* SVG Bars with growth transition over 320ms (Part 3.5) */}
                       {recentQuizAttempts.slice().reverse().map((attempt, idx) => {
                         const totalBars = recentQuizAttempts.length;
                         const availableWidth = 360;
                         const barWidth = Math.min(26, Math.max(16, availableWidth / totalBars - 10));
                         const x = 45 + idx * (availableWidth / Math.max(1, totalBars));
-                        const maxBarHeight = 100; // between y=120 and y=20
+                        const maxBarHeight = 100;
                         const targetHeight = Math.max(4, Math.round(((attempt.percentage || 0) / 100) * maxBarHeight));
                         const barHeight = chartAnimated ? targetHeight : 0;
                         const y = 120 - barHeight;
@@ -560,7 +648,6 @@ export function Home() {
                       })}
                     </svg>
 
-                    {/* Visually hidden accessible table for screen readers (Part 3.3) */}
                     <table className="sr-only">
                       <caption>Recent Quiz Scores and Percentages</caption>
                       <thead>
@@ -587,7 +674,7 @@ export function Home() {
               </motion.section>
             )}
 
-            {/* 7-day strip (This week activity) */}
+            {/* 7-day Activity Strip */}
             <motion.section
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -638,7 +725,7 @@ export function Home() {
             </motion.section>
           </div>
 
-          {/* Needs Review Module: Missed questions from most recent quiz */}
+          {/* Needs Review Module */}
           {latestMissed.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 6 }}
@@ -687,7 +774,7 @@ export function Home() {
             </motion.section>
           )}
 
-          {/* Recent Sessions List (Up to 8 items across all tools) */}
+          {/* Recent Sessions List */}
           {recentSessions.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 6 }}
@@ -760,6 +847,130 @@ export function Home() {
           )}
         </div>
       )}
+
+      {/* 5. Topic Transformation Pipeline Showcase */}
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+        className="space-y-4 pt-6 border-t border-ink-border"
+        data-testid="transformation-pipeline"
+      >
+        <div className="space-y-1">
+          <span className="type-label text-ink-subtle">Transformation Pipeline</span>
+          <h2 className="type-section text-ink">Turn raw lecture notes into academic assets</h2>
+          <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
+            Watch how unstructured notes are processed into structured academic study documents through a 3-step pipeline.
+          </p>
+        </div>
+
+        <div className="p-6 bg-white border border-ink-border rounded-panel document-panel-shadow">
+          <NotesToStructureDiagram className="w-full overflow-hidden" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+              01
+            </div>
+            <h3 className="text-sm font-semibold text-ink">
+              Paste notes or enter a topic
+            </h3>
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              Provide your raw study notes, draft answer, or target concept to begin.
+            </p>
+          </div>
+
+          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+              02
+            </div>
+            <h3 className="text-sm font-semibold text-ink">
+              Select dedicated study engines
+            </h3>
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              Generate structured summaries, practice multiple-choice questions, or word-level improvements.
+            </p>
+          </div>
+
+          <div className="p-5 bg-white border border-ink-border rounded-panel space-y-2">
+            <div className="w-6 h-6 flex items-center justify-center bg-[#EAE8E3] text-ink font-semibold rounded text-xs font-sans tabular-nums">
+              03
+            </div>
+            <h3 className="text-sm font-semibold text-ink">
+              Master material with active recall
+            </h3>
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              Take practice quizzes, flip cards, review explanations, and export formatted Markdown.
+            </p>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* 6. Interactive Reference Output Composition */}
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+        className="space-y-4 pt-6 border-t border-ink-border"
+        data-testid="reference-showcase"
+      >
+        <div className="space-y-1">
+          <span className="type-label text-ink-subtle">Output Quality Reference</span>
+          <h2 className="type-section text-ink">Live Example: Real Gemini 1.5 Academic Summary</h2>
+          <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed max-w-2xl">
+            Inspect the exact formatting, depth, and academic structure generated by StudyMate AI on real lecture material.
+          </p>
+        </div>
+
+        <div className="max-w-3xl bg-white rounded-panel border border-ink-border p-4 document-panel-shadow">
+          <AnimatedHeroComposition />
+        </div>
+      </motion.section>
+
+      {/* 7. Frequently Asked Questions */}
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+        className="space-y-4 pt-6 border-t border-ink-border"
+      >
+        <div className="space-y-1">
+          <span className="type-label text-ink-subtle">Frequently Asked Questions</span>
+          <h2 className="type-section text-ink">Everything you need to know</h2>
+          <p className="text-xs text-ink-secondary">
+            Clear information about data handling, schema checks, and usage limits.
+          </p>
+        </div>
+
+        <div className="divide-y divide-ink-border border-y border-ink-border">
+          {FAQS.map((faq, idx) => (
+            <FaqItem key={idx} q={faq.q} a={faq.a} />
+          ))}
+        </div>
+      </motion.section>
+
+      {/* 8. Local Storage Privacy Guarantee Banner */}
+      <motion.section
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: getModuleDelay(), ease: "easeOut" }}
+        className="p-6 bg-white border border-ink-border rounded-panel flex items-start gap-4 document-panel-shadow"
+      >
+        <ShieldCheck className="w-5 h-5 text-feedback-success shrink-0 mt-0.5" strokeWidth={1.75} />
+        <div className="space-y-1.5 text-xs">
+          <h3 className="font-serif text-sm font-semibold text-ink">Local-First Storage Guarantee</h3>
+          <p className="text-ink-secondary leading-relaxed max-w-2xl">
+            All session history and study sets are stored strictly inside your browser's localStorage. No tracking cookies, no accounts, and no backend databases are employed. Your study material remains yours.
+          </p>
+          <div className="pt-1">
+            <Link to="/privacy" className="text-brand hover:underline font-medium inline-flex items-center gap-1">
+              <span>Read complete Privacy Policy</span>
+              <ArrowRight className="w-3 h-3" strokeWidth={1.75} />
+            </Link>
+          </div>
+        </div>
+      </motion.section>
     </div>
   );
 }

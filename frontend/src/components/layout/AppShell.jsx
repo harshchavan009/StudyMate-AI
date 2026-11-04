@@ -6,7 +6,7 @@ import { MobileNav } from "./MobileNav";
 import { Footer } from "./Footer";
 import { ProgressiveBlur } from "@/components/motion/ProgressiveBlur";
 import { CommandMenu } from "@/components/ui/CommandMenu";
-import { Menu, ChevronRight, Search } from "lucide-react";
+import { Menu, ChevronRight, Search, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -98,9 +98,9 @@ export function AppShell() {
             sidebarCollapsed ? "lg:pl-16" : "lg:pl-[248px]"
           )}
         >
-          {/* Top Bar: sticky, 56px (h-14) with Progressive Blur edge (M7, 1.7, 2.2) */}
-          <div className="sticky top-0 z-20">
-            <header className="h-14 bg-transparent px-4 sm:px-8 flex items-center justify-between shrink-0">
+          {/* Top Bar: sticky, 56px (h-14) with translucent canvas frosted-glass and hairline (M7, 1.7, 2.2) */}
+          <div className="sticky top-0 z-30 bg-canvas/90 backdrop-blur-md border-b border-hairline transition-all">
+            <header className="h-14 px-4 sm:px-8 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 {/* Mobile hamburger button (< 1024px) opens drawer */}
                 <button
@@ -111,6 +111,15 @@ export function AppShell() {
                 >
                   <Menu className="w-4 h-4" strokeWidth={1.75} />
                 </button>
+
+                <Link
+                  to="/study-set"
+                  state={{ isNew: true }}
+                  className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-xs font-medium text-brand bg-brand-tint border border-brand/20 hover:bg-brand-tint/80 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+                  <span>New Study Set</span>
+                </Link>
               </div>
 
               {/* Right Header: Search Shortcut + Real 3-State Backend Health Indicator (1.7) */}

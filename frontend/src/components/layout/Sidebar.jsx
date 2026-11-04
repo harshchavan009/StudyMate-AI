@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, HelpCircle, PenLine, Lightbulb, Home, Clock, ArrowRight, X } from "lucide-react";
+import { BookOpen, HelpCircle, PenLine, Lightbulb, Home, Layers, Clock, ArrowRight, X } from "lucide-react";
 import { AnimatedBackground } from "@/components/motion/AnimatedBackground";
 import { getRecentSessions } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { path: "/", label: "Home", icon: Home },
+  { path: "/study-set", label: "Study Sets", icon: Layers },
   { path: "/summarizer", label: "Summarizer", icon: BookOpen },
   { path: "/quiz", label: "Quiz Generator", icon: HelpCircle },
   { path: "/answer-improver", label: "Answer Improver", icon: PenLine },

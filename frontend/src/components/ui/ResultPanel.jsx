@@ -170,8 +170,8 @@ export function ResultPanel({
             <div className="bg-white document-panel-shadow rounded-[12px] border border-[rgba(22,24,29,0.10)] p-6 sm:p-8 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-ink-border">
                 <div className="space-y-0.5">
-                  <h3 className="font-serif text-lg font-medium text-ink/75">
-                    What you will get
+                  <h3 className="font-serif text-lg font-medium text-ink">
+                    {title ? `${title} Structure` : "Document Structure"}
                   </h3>
                   <span className="text-xs text-ink-subtle font-sans tabular-nums">
                     {sections.length} sections

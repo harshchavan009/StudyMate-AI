@@ -26,13 +26,13 @@ export function SectionHeader({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 pb-2 border-b border-ink-border/60">
-      <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-ink-border/60">
+      <div className="flex items-center gap-2.5">
         <h2
           ref={headingRef}
           tabIndex={headingRef ? -1 : undefined}
           className={cn(
-            "font-serif text-lg font-medium transition-colors truncate focus:outline-none",
+            "font-serif text-[24px] font-medium leading-snug transition-colors focus:outline-none",
             isReviewed ? "text-ink-subtle line-through decoration-ink-subtle/50" : "text-ink"
           )}
         >

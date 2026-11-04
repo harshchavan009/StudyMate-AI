@@ -40,12 +40,13 @@ export function StudySet() {
   const navigate = useNavigate();
 
   // Load initial set or text
-  const initialSource = location.state?.sourceText || DEFAULT_PASSAGE;
-  const initialSetId = location.state?.setId || null;
+  const isNew = location.state?.isNew || false;
+  const initialSource = isNew ? "" : (location.state?.sourceText || DEFAULT_PASSAGE);
+  const initialSetId = isNew ? null : (location.state?.setId || null);
 
   const [setId, setSetId] = useState(initialSetId);
   const [sourceText, setSourceText] = useState(initialSource);
-  const [isEditingSource, setIsEditingSource] = useState(false);
+  const [isEditingSource, setIsEditingSource] = useState(isNew);
   const [editText, setEditText] = useState(initialSource);
   const [sourceRailCollapsed, setSourceRailCollapsed] = useState(false);
 
@@ -90,28 +91,36 @@ export function StudySet() {
   const [cardIndex, setCardIndex] = useState(0);
   const [cardFlipped, setCardFlipped] = useState(false);
 
-  // Load existing set if setId provided
+  // Load existing set if setId provided or load latest existing set
   useEffect(() => {
+    let existing = null;
     if (initialSetId) {
-      const existing = getStudySetById(initialSetId);
-      if (existing) {
-        setSourceText(existing.sourceText);
-        setEditText(existing.sourceText);
-        setOutputs(existing.outputs || {});
-        // Update tile states
-        setStates({
-          summary: existing.outputs?.summary ? "ready" : "idle",
-          quiz: existing.outputs?.quiz ? "ready" : "idle",
-          flashcards: existing.outputs?.flashcards ? "ready" : "idle",
-          term: existing.outputs?.explanations?.length > 0 ? "ready" : "idle",
-        });
-        if (existing.outputs?.summary) setActiveView("summary");
-        else if (existing.outputs?.quiz) setActiveView("quiz");
-        else if (existing.outputs?.flashcards) setActiveView("flashcards");
-        else if (existing.outputs?.explanations?.length > 0) setActiveView("explanation-0");
+      existing = getStudySetById(initialSetId);
+    } else if (!isNew) {
+      const allSets = getStudySets();
+      if (allSets && allSets.length > 0) {
+        existing = allSets[0];
       }
     }
-  }, [initialSetId]);
+
+    if (existing) {
+      setSetId(existing.id);
+      setSourceText(existing.sourceText);
+      setEditText(existing.sourceText);
+      setOutputs(existing.outputs || {});
+      // Update tile states
+      setStates({
+        summary: existing.outputs?.summary ? "ready" : "idle",
+        quiz: existing.outputs?.quiz ? "ready" : "idle",
+        flashcards: existing.outputs?.flashcards ? "ready" : "idle",
+        term: existing.outputs?.explanations?.length > 0 ? "ready" : "idle",
+      });
+      if (existing.outputs?.summary) setActiveView("summary");
+      else if (existing.outputs?.quiz) setActiveView("quiz");
+      else if (existing.outputs?.flashcards) setActiveView("flashcards");
+      else if (existing.outputs?.explanations?.length > 0) setActiveView("explanation-0");
+    }
+  }, [initialSetId, isNew]);
 
   // Persist study set helper
   const persistSet = (newOutputs, newSource = sourceText) => {
