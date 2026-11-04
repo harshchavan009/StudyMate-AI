@@ -121,6 +121,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.get("/health")
+def root_health():
+    return {"status": "ok", "service": "StudyMate AI Backend"}
+
+
 # Include API routes
 app.include_router(api_router)
 

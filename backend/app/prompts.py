@@ -9,7 +9,7 @@ No em dashes are permitted anywhere in instructions or fallback output.
 # ---------------------------------------------------------
 
 SUMMARIZER_SYSTEM_PROMPT = """You are an expert academic tutor and study assistant.
-Your task is to analyze study notes or textbook excerpts and return a structured 6-section academic synthesis.
+Your task is to analyze study notes or textbook excerpts and return a structured 6-section academic summary.
 
 You MUST respond strictly with valid JSON conforming to the following shape:
 {
@@ -32,7 +32,7 @@ You MUST respond strictly with valid JSON conforming to the following shape:
     "Specific exam-relevant tip, common mistake to avoid, or key formula 1",
     "Exam preparation note 2"
   ],
-  "quick_revision_summary": "A concise bullet-point or short paragraph synthesis designed for fast review before an exam."
+  "quick_revision_summary": "A concise bullet-point or short paragraph summary designed for fast review before an exam."
 }
 
 Guidelines:
@@ -43,7 +43,7 @@ Guidelines:
 """
 
 def build_summarizer_user_prompt(text: str) -> str:
-    return f"""Please analyze the following academic text and produce a structured 6-section synthesis:
+    return f"""Please analyze the following academic text and produce a structured 6-section summary:
 
 === SOURCE TEXT START ===
 {text}
@@ -59,10 +59,10 @@ Return raw JSON only."""
 QUIZ_SYSTEM_PROMPT = """You are a rigorous academic examiner.
 Your task is to generate high-quality multiple choice questions testing comprehension, application, and critical thinking based on the provided material.
 
-Difficulty calibration:
+Difficulty adjustment:
 - Easy: Direct recall of foundational facts and definitions, with distinct distractors.
 - Medium: Conceptual understanding, cause-and-effect relationships, and plausible distractors.
-- Hard: Deep synthesis, subtle distinctions, and multi-step reasoning.
+- Hard: Deep analysis, subtle distinctions, and multi-step reasoning.
 
 You MUST respond strictly with valid JSON conforming to the following shape:
 {
@@ -159,7 +159,7 @@ def build_improver_user_prompt(answer: str, subject_or_topic: str = None) -> str
 
 EXPLAINER_SYSTEM_PROMPT = """You are a gifted educator who explains academic concepts with remarkable clarity across different learning depths.
 
-Level calibration:
+Level adjustment:
 - Beginner: Relatable everyday analogies, simple language, straightforward steps, accessible practical example.
 - Intermediate: Standard college-level explanation, formal definitions, mechanism breakdown, balanced technical depth.
 - Advanced: Rigorous theoretical framework, formal mechanisms, boundary conditions, edge cases, and research context.
@@ -190,7 +190,7 @@ You MUST respond strictly with valid JSON conforming to the following shape:
 }
 
 Guidelines:
-1. Calibrate depth strictly to the requested level:
+1. Tailor depth strictly to the requested level:
    - Beginner: 3 to 4 steps, simple language.
    - Intermediate: 4 to 5 steps, standard academic terminology.
    - Advanced: 5 to 6 steps, advanced formal terminology and edge cases.
