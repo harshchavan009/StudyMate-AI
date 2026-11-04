@@ -1,4 +1,4 @@
-"""Prompt engineering templates for StudyMate AI.
+"""Prompt templates for StudyMate AI.
 
 Enforces strict JSON schemas matching exact specification requirements.
 No em dashes are permitted anywhere in instructions or fallback output.

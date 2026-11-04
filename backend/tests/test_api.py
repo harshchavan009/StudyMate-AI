@@ -232,7 +232,7 @@ def test_improver_generates_exact_spec_sections(client: TestClient):
     assert len(data["changed_phrases"]) >= 1
 
 
-def test_explainer_calibrates_by_level_with_exact_sections(client: TestClient):
+def test_explainer_adjusts_by_level_with_exact_sections(client: TestClient):
     """Verify concept explainer returns exact 6 sections:
     Introduction, Detailed Explanation, Step-by-Step Understanding,
     Practical Example, Real-World Applications, Quick Revision Points.
@@ -262,16 +262,16 @@ def test_explainer_calibrates_by_level_with_exact_sections(client: TestClient):
 
 def test_clean_json_string_and_em_dash_sanitizer():
     """Verify JSON block extraction and em dash substitution."""
-    raw_markdown_json = "```json\n{\"key\": \"value—with—em-dash\"}\n```"
+    raw_markdown_json = "```json\n{\"key\": \"value\u2014with\u2014em-dash\"}\n```"
     cleaned = clean_json_string(raw_markdown_json)
     assert cleaned == '{"key": "value, with, em-dash"}'
-    assert "—" not in cleaned
+    assert "\u2014" not in cleaned
 
 
 def test_sanitize_dashes_helper():
-    text = "Photosynthesis—the process—converts sunlight"
+    text = "Photosynthesis\u2014the process\u2014converts sunlight"
     sanitized = sanitize_dashes(text)
-    assert "—" not in sanitized
+    assert "\u2014" not in sanitized
     assert "Photosynthesis, the process, converts sunlight" == sanitized
 
 
@@ -281,7 +281,7 @@ def test_no_em_dashes_in_prompts_and_schemas():
     for attr in dir(prompts):
         val = getattr(prompts, attr)
         if isinstance(val, str):
-            assert "—" not in val, f"Em dash found in prompt: {attr}"
+            assert "\u2014" not in val, f"Em dash found in prompt: {attr}"
 
 
 def test_malformed_json_body_returns_422(client: TestClient):

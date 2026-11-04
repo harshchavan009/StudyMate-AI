@@ -52,7 +52,7 @@ StudyMate AI was subjected to a comprehensive 13-point security review prior to 
 ### 8. Security Headers
 - **Status**: Passed
 - **Checked**: HTTP response headers from live FastAPI server and `frontend/vercel.json`.
-- **Findings**: Verified response headers include:
+- **Findings**: Confirmed response headers include:
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
   - `Referrer-Policy: strict-origin-when-cross-origin`
@@ -69,8 +69,8 @@ StudyMate AI was subjected to a comprehensive 13-point security review prior to 
 - **Status**: Passed
 - **Checked**: Ran `npm audit` on frontend and `pip-audit` on backend.
 - **Remediation**:
-  - `npm audit` originally reported a moderate advisory on older React Router. Upgraded to latest patched release. Verified: `found 0 vulnerabilities`.
-  - `pip-audit` originally flagged Starlette 0.46.2. Upgraded Starlette, FastAPI, and Pytest to patched versions. Verified: `No known vulnerabilities found`.
+  - `npm audit` originally reported a moderate advisory on older React Router. Upgraded to latest patched release. Confirmed: `found 0 vulnerabilities`.
+  - `pip-audit` originally flagged Starlette 0.46.2. Upgraded Starlette, FastAPI, and Pytest to patched versions. Confirmed: `No known vulnerabilities found`.
 
 ### 11. Code and File Cleanup
 - **Status**: Passed

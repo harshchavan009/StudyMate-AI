@@ -143,7 +143,7 @@ pip install -r requirements.txt
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env to add your GEMINI_API_KEY (optional for local testing; mock engine runs if unset)
+# Edit .env to add your GEMINI_API_KEY (optional for local testing; mock fallback runs if unset)
 
 # Start FastAPI backend server
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload

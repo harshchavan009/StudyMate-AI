@@ -203,7 +203,7 @@
   color: var(--color-ink);
 }
 
-/* Print Stylesheet (C1) */
+/* Print styles (C1) */
 @media print {
   body {
     background: #FFFFFF !important;

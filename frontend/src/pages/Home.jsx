@@ -881,7 +881,7 @@ export function Home() {
               02
             </div>
             <h3 className="text-sm font-semibold text-ink">
-              Select dedicated study engines
+              Select dedicated study tools
             </h3>
             <p className="text-xs text-ink-secondary leading-relaxed">
               Generate structured summaries, practice multiple-choice questions, or word-level improvements.

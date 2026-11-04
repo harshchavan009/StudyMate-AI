@@ -36,7 +36,7 @@ def sanitize_dashes(text: str) -> str:
     """Replace em dashes and en dashes with commas or colons."""
     if not isinstance(text, str):
         return text
-    return text.replace("—", ", ").replace("–", ", ")
+    return text.replace("\u2014", ", ").replace("\u2013", ", ")
 
 
 def clean_json_string(raw: str) -> str:
@@ -368,7 +368,7 @@ class GeminiService:
         return SummarizeResponse(
             topic_overview=(
                 f"This document examines the foundations and mechanisms of {title}. "
-                "It synthesizes core principles, critical terminology, and operational dynamics for study review."
+                "It brings together core principles, critical terminology, and operational dynamics for study review."
             ),
             key_concepts=[
                 "Structural decoupling of independent component responsibilities",
@@ -586,7 +586,7 @@ class GeminiService:
                 ],
                 "High-frequency autonomous algorithmic trading systems dynamically balancing risk exposure across correlated asset classes during market volatility.",
                 [
-                    "Orbital trajectory correction in aerospace engineering",
+                    "Orbital trajectory correction in aerospace physics",
                     "Distributed grid frequency stabilization in renewable energy networks",
                 ],
                 [

@@ -382,7 +382,7 @@ export function Summarizer() {
             />
             <div className="space-y-4 pt-1">
               {result.key_concepts?.map((concept, idx) => {
-                const parts = concept.split(/:\s*|—\s*|-\s*/);
+                const parts = concept.split(/:\s*|\u2014\s*|-\s*/);
                 const title = parts.length > 1 ? parts[0].trim() : concept;
                 const explanation = parts.length > 1 ? parts.slice(1).join(": ").trim() : "";
                 return (

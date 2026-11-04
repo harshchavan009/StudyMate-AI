@@ -48,7 +48,7 @@ export function StudySet() {
   const [sourceText, setSourceText] = useState(initialSource);
   const [isEditingSource, setIsEditingSource] = useState(isNew);
   const [editText, setEditText] = useState(initialSource);
-  const [sourceRailCollapsed, setSourceRailCollapsed] = useState(false);
+  const [sourceNotesCollapsed, setSourceNotesCollapsed] = useState(false);
 
   // Floating selection toolbar
   const [selectionRange, setSelectionRange] = useState(null);
@@ -297,25 +297,25 @@ export function StudySet() {
 
       {/* 5.2 Workspace 3-zone layout at desktop */}
       <div className="flex flex-col lg:flex-row gap-6 items-start min-h-[640px]">
-        {/* Zone 1: Left Source Rail (300px, collapsible) */}
+        {/* Zone 1: Left Source Notes (300px, collapsible) */}
         <div
           className={cn(
             "bg-white document-panel-shadow rounded-[12px] border border-[rgba(22,24,29,0.10)] transition-all duration-200 flex flex-col shrink-0",
-            sourceRailCollapsed ? "w-full lg:w-12 p-3 items-center" : "w-full lg:w-[300px] p-5"
+            sourceNotesCollapsed ? "w-full lg:w-12 p-3 items-center" : "w-full lg:w-[300px] p-5"
           )}
-          data-testid="source-rail"
+          data-testid="source-notes"
         >
           <div className="flex items-center justify-between pb-3 border-b border-ink-border w-full">
-            {!sourceRailCollapsed && (
+            {!sourceNotesCollapsed && (
               <span className="type-label text-ink">Source Notes</span>
             )}
             <button
               type="button"
-              onClick={() => setSourceRailCollapsed(!sourceRailCollapsed)}
+              onClick={() => setSourceNotesCollapsed(!sourceNotesCollapsed)}
               className="p-1 rounded hover:bg-canvas text-ink-subtle hover:text-ink transition-colors"
-              title={sourceRailCollapsed ? "Expand Source Rail" : "Collapse Source Rail"}
+              title={sourceNotesCollapsed ? "Expand source notes" : "Collapse source notes"}
             >
-              {sourceRailCollapsed ? (
+              {sourceNotesCollapsed ? (
                 <ChevronRight className="w-4 h-4" />
               ) : (
                 <ChevronLeft className="w-4 h-4" />
@@ -323,7 +323,7 @@ export function StudySet() {
             </button>
           </div>
 
-          {!sourceRailCollapsed && (
+          {!sourceNotesCollapsed && (
             <div className="space-y-4 pt-3 flex-1 flex flex-col">
               {isEditingSource ? (
                 <div className="space-y-2 flex-1 flex flex-col">
@@ -522,13 +522,10 @@ export function StudySet() {
                 </div>
               ) : (
                 <div className="py-12 text-center space-y-3">
-                  <p className="font-serif text-lg text-ink">Summary not created yet</p>
-                  <p className="text-xs text-ink-secondary max-w-sm mx-auto">
-                    Click "Summary" on the right rail to generate structured notes from your passage.
-                  </p>
+                  <p className="font-serif text-lg text-ink">No summary yet.</p>
                   <Button variant="primary" size="sm" onClick={handleGenerateSummary}>
                     <Plus className="w-4 h-4 mr-1" />
-                    <span>Generate Summary</span>
+                    <span>Generate summary</span>
                   </Button>
                 </div>
               )}
@@ -622,13 +619,10 @@ export function StudySet() {
                 </div>
               ) : (
                 <div className="py-12 text-center space-y-3">
-                  <p className="font-serif text-lg text-ink">Quiz not created yet</p>
-                  <p className="text-xs text-ink-secondary max-w-sm mx-auto">
-                    Click "Quiz" on the right rail to generate practice questions.
-                  </p>
+                  <p className="font-serif text-lg text-ink">No quiz yet.</p>
                   <Button variant="primary" size="sm" onClick={() => handleGenerateQuiz()}>
                     <Plus className="w-4 h-4 mr-1" />
-                    <span>Generate Quiz</span>
+                    <span>Generate quiz</span>
                   </Button>
                 </div>
               )}
@@ -749,10 +743,10 @@ export function StudySet() {
           )}
         </div>
 
-        {/* Zone 3: Right Create Rail (260px) */}
+        {/* Zone 3: Right Action Column (260px) */}
         <div
           className="w-full lg:w-[260px] shrink-0 space-y-3"
-          data-testid="create-rail"
+          data-testid="study-actions"
         >
           <span className="type-label text-ink-subtle block px-1">Study Outputs</span>
 

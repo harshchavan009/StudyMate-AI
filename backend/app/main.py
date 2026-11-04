@@ -116,7 +116,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "An internal server error occurred. Our engineering team has been alerted.",
+            "detail": "An internal server error occurred. Our team has been alerted.",
         },
     )
 
