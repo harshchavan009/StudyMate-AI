@@ -21,7 +21,7 @@ export const Button = forwardRef(
       primary:
         "bg-brand text-white hover:bg-brand-hover active:bg-brand-active border border-transparent shadow-sm disabled:bg-[#EAE8E3] disabled:text-[#7E8695] disabled:border-transparent",
       secondary:
-        "bg-transparent text-ink border border-ink-border hover:border-ink-border-hover hover:bg-black/[0.02] active:bg-black/[0.05] disabled:bg-transparent disabled:text-[#7E8695] disabled:border-ink-border/40",
+        "bg-transparent text-ink border border-ink-border hover:border-ink hover:bg-black/[0.02] active:bg-black/[0.05] disabled:opacity-40 disabled:border-ink-border/40 disabled:text-ink-subtle",
       tertiary:
         "bg-transparent text-ink-secondary hover:text-ink hover:bg-black/[0.04] active:bg-black/[0.08] border border-transparent disabled:bg-transparent disabled:text-[#7E8695]/50",
       subtle:
