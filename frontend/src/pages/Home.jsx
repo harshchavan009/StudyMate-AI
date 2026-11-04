@@ -381,7 +381,7 @@ export function Home() {
           <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
             <BookOpen className="w-4 h-4" strokeWidth={1.75} />
           </div>
-          <span className="type-label text-ink-subtle block">Output Engine</span>
+          <span className="type-label text-ink-subtle block">Summaries</span>
           <h4 className="font-serif text-base font-medium text-ink">6-Section Summaries</h4>
           <p className="text-[11px] text-ink-secondary leading-relaxed">
             Overview, concepts, definitions, rules, exam notes, and quick revision.
@@ -392,7 +392,7 @@ export function Home() {
           <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
             <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
           </div>
-          <span className="type-label text-ink-subtle block">Recall Engine</span>
+          <span className="type-label text-ink-subtle block">Quizzes</span>
           <h4 className="font-serif text-base font-medium text-ink">Active-Recall Quizzes</h4>
           <p className="text-[11px] text-ink-secondary leading-relaxed">
             Four-option questions with keycaps, docked rationales, and review mode.
@@ -403,7 +403,7 @@ export function Home() {
           <div className="w-7 h-7 rounded-[4px] bg-brand-tint flex items-center justify-center text-brand mb-2">
             <PenLine className="w-4 h-4" strokeWidth={1.75} />
           </div>
-          <span className="type-label text-ink-subtle block">Refinement Engine</span>
+          <span className="type-label text-ink-subtle block">Answer Polish</span>
           <h4 className="font-serif text-base font-medium text-ink">Word-Level Redline</h4>
           <p className="text-[11px] text-ink-secondary leading-relaxed">
             Inline additions and deletions that elevate prose without inventing facts.
