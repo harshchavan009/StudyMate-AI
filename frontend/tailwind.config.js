@@ -7,6 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        sidebar: {
+          DEFAULT: "var(--color-sidebar)",
+          text: "var(--color-sidebar-text)",
+          muted: "var(--color-sidebar-muted)",
+        },
+        canvas: "var(--color-canvas)",
+        panel: "var(--color-panel)",
         page: "var(--color-page)",
         surface: "var(--color-surface)",
         inset: "var(--color-inset)",
@@ -38,6 +45,10 @@ export default {
           bg: "#FEF3C7",
           border: "#FDE68A",
         },
+      },
+      borderRadius: {
+        control: "6px",
+        panel: "12px",
       },
       fontFamily: {
         serif: ['"Source Serif 4"', "Georgia", "serif"],

@@ -5,9 +5,14 @@
 @layer base {
   :root {
     color-scheme: light;
-    --color-page: #FAF9F6;
+    --color-sidebar: #14161B;
+    --color-sidebar-text: #E9E6DF;
+    --color-sidebar-muted: #9A9DA5;
+    --color-canvas: #F2EFE8;
+    --color-page: #F2EFE8;
+    --color-panel: #FFFFFF;
     --color-surface: #FFFFFF;
-    --color-inset: #F3F1EC;
+    --color-inset: #F7F5F0;
     --color-ink: #16181D;
     --color-muted: #5B6070;
     --color-hairline: rgba(22, 24, 29, 0.10);
@@ -18,7 +23,7 @@
     --color-error: #B3261E;
     --color-warning: #8A5A00;
     --radius-control: 6px;
-    --radius-panel: 10px;
+    --radius-panel: 12px;
   }
 
   html {
@@ -26,7 +31,7 @@
   }
 
   body {
-    background-color: var(--color-page);
+    background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: "Inter", system-ui, -apple-system, sans-serif;
   }
@@ -126,19 +131,73 @@
   }
 }
 
-/* Document & Output Typography (B1) */
-.output-body {
+/* Document Panel Shadow (Documents only, Part 2 override) */
+.document-panel-shadow {
+  box-shadow: 0 1px 2px rgba(22, 24, 29, 0.05), 0 12px 32px rgba(22, 24, 29, 0.07);
+}
+
+/* Strict Type Scale (Part 2.3) */
+/* dashboard title 40/1.1 */
+.type-dashboard-title {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* page title 32/1.2 */
+.type-page-title {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* section 24/1.25 */
+.type-section {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 500;
+}
+
+/* subsection 18/1.3 */
+.type-subsection {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+/* document body 17/1.65 */
+.output-body, .type-doc-body {
   font-family: "Inter", sans-serif;
   font-size: 17px;
   line-height: 1.65;
-  max-width: 68ch;
   color: var(--color-ink);
+}
+
+/* UI 14/1.4 */
+.type-ui {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* label 12 with 0.04em tracking */
+.type-label {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.33;
+  letter-spacing: 0.04em;
 }
 
 .home-headline {
   font-family: "Source Serif 4", Georgia, serif;
   font-weight: 500;
-  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  font-size: 40px;
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--color-ink);
