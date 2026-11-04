@@ -95,7 +95,7 @@ export function AppShell() {
         <div
           className={cn(
             "flex-1 flex flex-col min-w-0 transition-[padding] duration-200 pb-16 lg:pb-0",
-            sidebarCollapsed ? "lg:pl-16" : "lg:pl-[264px]"
+            sidebarCollapsed ? "lg:pl-16" : "lg:pl-[248px]"
           )}
         >
           {/* Top Bar: sticky, 56px (h-14) with Progressive Blur edge (M7) */}
