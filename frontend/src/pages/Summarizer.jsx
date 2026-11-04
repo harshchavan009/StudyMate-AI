@@ -15,6 +15,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft, getReviewedSections, saveReviewedSections } from "@/lib/storage";
+import toolSamples from "@/data/toolSamples.json";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_TEXT = `Operating systems manage computer hardware and execution environments through abstraction layers. The kernel is the central core of an operating system, arbitrating memory allocation, CPU scheduling, file storage, and peripheral input and output while enforcing strict process isolation boundaries. 
@@ -52,6 +53,7 @@ export function Summarizer() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [isSample, setIsSample] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 20, max: 10000 });
@@ -155,6 +157,7 @@ export function Summarizer() {
 
     setStatus("loading");
     setError(null);
+    setIsSample(false);
 
     try {
       const data = await api.summarize(text.trim(), { signal: controller.signal });
@@ -188,26 +191,18 @@ export function Summarizer() {
     }
   };
 
-  const handleTrySample = async () => {
-    setText(SAMPLE_TEXT);
-    setIsTouched(true);
-    setStatus("loading");
-    setError(null);
-    try {
-      const data = await api.summarize(SAMPLE_TEXT);
-      setResult(data);
+  const handleViewSample = () => {
+    if (toolSamples?.summarizer) {
+      setResult(toolSamples.summarizer);
+      setIsSample(true);
       setStatus("success");
-      saveRecentSession({
-        tool: "summarizer",
-        toolName: "Summarizer",
-        title: "Cellular Energy & Mitochondria",
-        input: SAMPLE_TEXT,
-        result: data,
-      });
-    } catch (err) {
-      setError(err.message || "Failed to generate sample");
-      setStatus("error");
     }
+  };
+
+  const handleClearSample = () => {
+    setIsSample(false);
+    setResult(null);
+    setStatus("empty");
   };
 
   const handleSelectRecent = (rec) => {
@@ -241,6 +236,7 @@ export function Summarizer() {
   const handleClear = () => {
     setText("");
     setIsTouched(false);
+    setIsSample(false);
     clearDraft("summarizer");
     setStatus("empty");
     setResult(null);
@@ -345,10 +341,12 @@ export function Summarizer() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
-      onTrySample={handleTrySample}
+      onViewSample={handleViewSample}
+      isSample={isSample}
+      onClearSample={handleClearSample}
       onSelectRecent={handleSelectRecent}
       sections={SUMMARIZER_SECTIONS}
-      title="Academic Summary"
+      title="Summary"
       badge="6 sections"
       rawMarkdown={result?.raw_markdown}
       filename="studymate-summary.md"

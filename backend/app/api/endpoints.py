@@ -78,6 +78,7 @@ def summarize_text(request: Request, payload: SummarizeRequest):
 
 
 @router.post("/quiz", response_model=QuizResponse)
+@router.post("/generate-quiz", response_model=QuizResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_ENDPOINTS)
 def generate_quiz(request: Request, payload: QuizRequest):
     """Generate multiple choice questions with bounded retry validation."""
@@ -118,6 +119,7 @@ def improve_answer(request: Request, payload: ImproveAnswerRequest):
 
 
 @router.post("/explain-concept", response_model=ExplainConceptResponse)
+@router.post("/explain", response_model=ExplainConceptResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_ENDPOINTS)
 def explain_concept(request: Request, payload: ExplainConceptRequest):
     """Generate 6-section conceptual explanation tailored by academic level."""

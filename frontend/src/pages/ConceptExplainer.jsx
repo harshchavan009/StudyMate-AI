@@ -19,6 +19,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft, getReviewedSections, saveReviewedSections } from "@/lib/storage";
+import toolSamples from "@/data/toolSamples.json";
 import { cn } from "@/lib/utils";
 
 const SUBJECT_OPTIONS = [
@@ -114,6 +115,7 @@ export function ConceptExplainer() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [explainerCache, setExplainerCache] = useState({}); // { [level]: ExplainConceptResponse } (C8)
+  const [isSample, setIsSample] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 3, max: 300 });
@@ -226,7 +228,7 @@ export function ConceptExplainer() {
   if (!isOnline) {
     disabledReason = "You are currently offline. Check your network connection.";
   } else if (status === "loading") {
-    disabledReason = "Synthesizing concept breakdown, please wait...";
+    disabledReason = "Generating concept breakdown, please wait...";
   } else if (charCount === 0) {
     disabledReason = `Enter a concept or theory (${limits.min} to ${limits.max} characters).`;
   } else if (isTooShort) {
@@ -248,6 +250,7 @@ export function ConceptExplainer() {
 
     setStatus("loading");
     setError(null);
+    setIsSample(false);
 
     const apiSubject = subject === "Not specified" ? "Other" : subject;
 
@@ -336,6 +339,7 @@ export function ConceptExplainer() {
     setConcept("");
     setSubject("Not specified");
     setIsTouched(false);
+    setIsSample(false);
     setExplainerCache({});
     clearDraft("explainer");
     setSessionId(null);
@@ -344,28 +348,20 @@ export function ConceptExplainer() {
     setError(null);
   };
 
-  const handleTrySample = async () => {
-    setConcept(SAMPLE_CONCEPT);
-    setSubject(SAMPLE_SUBJECT);
-    setSelectedLevel("intermediate");
-    setIsTouched(true);
-    setStatus("loading");
-    setError(null);
-    try {
-      const data = await api.explainConcept(SAMPLE_CONCEPT, "intermediate", SAMPLE_SUBJECT);
-      setExplainerCache({ intermediate: data });
+  const handleViewSample = () => {
+    if (toolSamples?.explainer) {
+      const lvl = toolSamples.explainer.level?.toLowerCase() || "intermediate";
+      setSelectedLevel(lvl);
+      setExplainerCache({ [lvl]: toolSamples.explainer });
+      setIsSample(true);
       setStatus("success");
-      saveRecentSession({
-        tool: "explainer",
-        toolName: "Concept Explainer",
-        title: `${SAMPLE_CONCEPT} (intermediate)`,
-        input: SAMPLE_CONCEPT,
-        result: data,
-      });
-    } catch (err) {
-      setError(err.message || "Failed to explain sample concept");
-      setStatus("error");
     }
+  };
+
+  const handleClearSample = () => {
+    setIsSample(false);
+    setExplainerCache({});
+    setStatus("empty");
   };
 
   const handleSelectRecent = (rec) => {
@@ -504,10 +500,12 @@ export function ConceptExplainer() {
       error={error}
       onRetry={() => fetchExplanation(selectedLevel, true)}
       onStop={handleStop}
-      onTrySample={handleTrySample}
+      onViewSample={handleViewSample}
+      isSample={isSample}
+      onClearSample={handleClearSample}
       onSelectRecent={handleSelectRecent}
       sections={EXPLAINER_SECTIONS}
-      title={currentResult ? currentResult.concept : "Concept Explanation"}
+      title={isSample ? "Explanation" : currentResult ? currentResult.concept : "Explanation"}
       badge={
         currentResult ? (
           <span className="inline-flex items-center gap-1.5">

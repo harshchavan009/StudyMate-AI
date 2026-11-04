@@ -15,6 +15,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveDraft, getDraft, clearDraft } from "@/lib/storage";
+import toolSamples from "@/data/toolSamples.json";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_ANSWER = `Mitochondria are known as the powerhouse of the cell because they make ATP which the cell needs for energy. They have two membranes, an inner one and an outer one. The inner membrane has folds called cristae that give more surface area. Inside is the matrix where the Krebs cycle happens. During cellular respiration, glucose is broken down to produce ATP through oxidative phosphorylation across the inner mitochondrial membrane.`;
@@ -42,6 +43,7 @@ export function AnswerImprover() {
   const [status, setStatus] = useState("empty"); // empty | loading | success | error
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [isSample, setIsSample] = useState(false);
   const [liveAcceptedText, setLiveAcceptedText] = useState(null);
   const [limits, setLimits] = useState({ min: 10, max: 5000, subject_max: 200 });
   const [isTouched, setIsTouched] = useState(false);
@@ -149,6 +151,7 @@ export function AnswerImprover() {
 
     setStatus("loading");
     setError(null);
+    setIsSample(false);
 
     try {
       const data = await api.improveAnswer(
@@ -208,6 +211,7 @@ export function AnswerImprover() {
     setAnswer("");
     setSubjectOrTopic("");
     setIsTouched(false);
+    setIsSample(false);
     clearDraft("improver");
     setStatus("empty");
     setResult(null);
@@ -215,27 +219,20 @@ export function AnswerImprover() {
     setError(null);
   };
 
-  const handleTrySample = async () => {
-    setAnswer(SAMPLE_ANSWER);
-    setSubjectOrTopic(SAMPLE_TOPIC);
-    setIsTouched(true);
-    setStatus("loading");
-    setError(null);
-    try {
-      const data = await api.improveAnswer(SAMPLE_ANSWER, SAMPLE_TOPIC);
-      setResult(data);
+  const handleViewSample = () => {
+    if (toolSamples?.improver) {
+      setResult(toolSamples.improver);
+      setIsSample(true);
       setStatus("success");
-      saveRecentSession({
-        tool: "improver",
-        toolName: "Answer Improver",
-        title: SAMPLE_TOPIC,
-        input: SAMPLE_ANSWER,
-        result: data,
-      });
-    } catch (err) {
-      setError(err.message || "Failed to analyze and improve sample answer");
-      setStatus("error");
+      setLiveAcceptedText(null);
     }
+  };
+
+  const handleClearSample = () => {
+    setIsSample(false);
+    setResult(null);
+    setStatus("empty");
+    setLiveAcceptedText(null);
   };
 
   const handleSelectRecent = (rec) => {
@@ -431,10 +428,12 @@ export function AnswerImprover() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
-      onTrySample={handleTrySample}
+      onViewSample={handleViewSample}
+      isSample={isSample}
+      onClearSample={handleClearSample}
       onSelectRecent={handleSelectRecent}
       sections={IMPROVER_SECTIONS}
-      title="Answer Improvement"
+      title="Improved answer"
       badge={result?.subject_or_topic || null}
       rawMarkdown={rawMarkdown}
       filename="studymate-improved-answer.md"

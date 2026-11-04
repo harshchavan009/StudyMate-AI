@@ -17,6 +17,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import { api } from "@/lib/api";
 import { saveRecentSession, saveQuizAttempt, saveDraft, getDraft, clearDraft } from "@/lib/storage";
+import toolSamples from "@/data/toolSamples.json";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_TEXT = `Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power biochemical reactions. This chemical energy is stored in a small molecule called adenosine triphosphate (ATP). 
@@ -77,6 +78,7 @@ export function QuizGenerator() {
   const [status, setStatus] = useState("empty"); // empty | loading | playing | finished | error
   const [error, setError] = useState(null);
   const [quizData, setQuizData] = useState(null);
+  const [isSample, setIsSample] = useState(false);
   const [limits, setLimits] = useState({ min: 20, max: 10000, focus_max: 200 });
   const [focus, setFocus] = useState("");
   const [isTouched, setIsTouched] = useState(false);
@@ -269,6 +271,7 @@ export function QuizGenerator() {
 
     setStatus("loading");
     setError(null);
+    setIsSample(false);
     setCurrentIndex(0);
     setUserAnswers({});
     setExplanationOpen(false);
@@ -338,6 +341,7 @@ export function QuizGenerator() {
     setText("");
     setFocus("");
     setIsTouched(false);
+    setIsSample(false);
     clearDraft("quiz");
     try {
       localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
@@ -349,33 +353,27 @@ export function QuizGenerator() {
     setCurrentIndex(0);
   };
 
-  const handleTrySample = async () => {
-    setText(SAMPLE_TEXT);
-    setIsTouched(true);
-    setStatus("loading");
-    setError(null);
-    try {
-      const data = await api.generateQuiz(SAMPLE_TEXT, difficulty, count);
+  const handleViewSample = () => {
+    if (toolSamples?.quiz) {
       const preparedData = {
-        ...data,
-        questions: shuffleQuestions(data.questions),
+        ...toolSamples.quiz,
+        questions: toolSamples.quiz.questions || [],
       };
       setQuizData(preparedData);
       initFlashcards(preparedData.questions);
       setUserAnswers({});
       setCurrentIndex(0);
+      setIsSample(true);
       setStatus("playing");
-      saveRecentSession({
-        tool: "quiz",
-        toolName: "Quiz Generator",
-        title: `${difficulty.toUpperCase()} Quiz (${preparedData.questions.length} Qs)`,
-        input: SAMPLE_TEXT,
-        result: preparedData,
-      });
-    } catch (err) {
-      setError(err.message || "Failed to generate sample quiz");
-      setStatus("error");
     }
+  };
+
+  const handleClearSample = () => {
+    setIsSample(false);
+    setQuizData(null);
+    setStatus("empty");
+    setUserAnswers({});
+    setCurrentIndex(0);
   };
 
   const handleSelectRecent = (rec) => {
@@ -681,10 +679,12 @@ export function QuizGenerator() {
       error={error}
       onRetry={() => handleGenerate()}
       onStop={handleStop}
-      onTrySample={handleTrySample}
+      onViewSample={handleViewSample}
+      isSample={isSample}
+      onClearSample={handleClearSample}
       onSelectRecent={handleSelectRecent}
       sections={QUIZ_SECTIONS}
-      title="Practice Quiz"
+      title="Quiz"
       badge={questions.length > 0 ? `${questions.length} questions` : null}
       rawMarkdown={rawMarkdown}
       filename="studymate-quiz.md"

@@ -17,22 +17,22 @@ const TOOL_STAGES = {
   summarizer: [
     { label: "Segmenting study notes", desc: "Parsing core concepts and identifying domain mechanisms" },
     { label: "Extracting definitions & key points", desc: "Structuring terminology, rules, and core insights" },
-    { label: "Synthesizing exam-prep & revision summary", desc: "Compiling revision takeaways into structured academic sections" },
+    { label: "Compiling revision summary", desc: "Compiling revision takeaways into structured academic sections" },
   ],
   quiz: [
     { label: "Scanning notes for testable propositions", desc: "Identifying key facts and foundational principles" },
     { label: "Formulating distractors & answer keys", desc: "Crafting plausible multiple-choice options" },
-    { label: "Calibrating explanations & rationales", desc: "Writing comprehensive explanations for each question" },
+    { label: "Tailoring explanations & rationales", desc: "Writing comprehensive explanations for each question" },
   ],
   improver: [
     { label: "Assessing draft precision & structure", desc: "Evaluating academic clarity, grammar, and tone" },
-    { label: "Verifying factual retention", desc: "Checking that original facts are preserved without adding new claims" },
+    { label: "Checking factual retention", desc: "Checking that original facts are preserved without adding new claims" },
     { label: "Generating redline word-level revisions", desc: "Drafting sentence polish and concrete improvement suggestions" },
   ],
   explainer: [
-    { label: "Calibrating explanation depth", desc: "Tailoring mechanisms and vocabulary to selected difficulty level" },
+    { label: "Tailoring explanation depth", desc: "Tailoring mechanisms and vocabulary to selected difficulty level" },
     { label: "Deconstructing core mechanisms & analogies", desc: "Building step-by-step conceptual walkthrough" },
-    { label: "Synthesizing practical applications", desc: "Compiling real-world examples and high-yield revision points" },
+    { label: "Compiling practical applications", desc: "Compiling real-world examples and high-yield revision points" },
   ],
 };
 
@@ -51,6 +51,9 @@ export function ResultPanel({
   onRetry = null,
   onStop = null,
   onTrySample = null,
+  onViewSample = null,
+  isSample = false,
+  onClearSample = null,
   onSelectRecent = null,
   sections = [],
   title = "Document",
@@ -171,24 +174,21 @@ export function ResultPanel({
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-ink-border">
                 <div className="space-y-0.5">
                   <h3 className="font-serif text-lg font-medium text-ink">
-                    {title ? `${title} Structure` : "Document Structure"}
+                    {title}
                   </h3>
                   <span className="text-xs text-ink-subtle font-sans tabular-nums">
                     {sections.length} sections
                   </span>
                 </div>
 
-                {onTrySample && (
-                  <Button
+                {(onViewSample || onTrySample) && (
+                  <button
                     type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={onTrySample}
-                    className="gap-1.5"
+                    onClick={onViewSample || onTrySample}
+                    className="text-xs font-medium text-brand hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
                   >
-                    <Play className="w-3 h-3 fill-current text-brand" />
-                    <span>Try a sample</span>
-                  </Button>
+                    View a sample result
+                  </button>
                 )}
               </div>
 
@@ -383,10 +383,27 @@ export function ResultPanel({
                   <h2 className="font-serif text-lg font-medium text-ink">
                     {title}
                   </h2>
-                  {badge && (
-                    <span className="text-[11px] text-ink-secondary bg-canvas px-2 py-0.5 rounded font-medium border border-ink-border/50">
-                      {badge}
-                    </span>
+                  {isSample ? (
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 text-xs font-medium rounded bg-[#EEF1FB] text-[#1F3FBF] border border-[#1F3FBF]/20">
+                        Sample
+                      </span>
+                      {onClearSample && (
+                        <button
+                          type="button"
+                          onClick={onClearSample}
+                          className="text-xs text-ink-secondary hover:text-brand underline underline-offset-2 ml-1"
+                        >
+                          Use your own notes
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    badge && (
+                      <span className="text-[11px] text-ink-secondary bg-canvas px-2 py-0.5 rounded font-medium border border-ink-border/50">
+                        {badge}
+                      </span>
+                    )
                   )}
                 </div>
 
