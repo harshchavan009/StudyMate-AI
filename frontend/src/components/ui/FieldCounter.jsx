@@ -39,13 +39,13 @@ export function FieldCounter({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-2 text-[11px]",
+        "flex items-start justify-between gap-3 text-xs field-counter-row",
         className
       )}
     >
       <div
         className={cn(
-          "transition-colors",
+          "flex-1 min-w-0 pr-2 transition-colors leading-normal",
           messageVariant === "error" && "text-feedback-error font-medium",
           messageVariant === "warning" && "text-[#8A5A00] font-medium",
           messageVariant === "normal" && "text-ink-subtle"
@@ -56,7 +56,7 @@ export function FieldCounter({
 
       <span
         className={cn(
-          "tabular-nums font-sans shrink-0 transition-colors",
+          "tabular-nums font-sans shrink-0 text-right transition-colors field-counter-numbers",
           isTooLong
             ? "text-feedback-error font-medium"
             : isApproaching

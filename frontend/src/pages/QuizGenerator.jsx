@@ -79,6 +79,7 @@ export function QuizGenerator() {
   const [quizData, setQuizData] = useState(null);
   const [limits, setLimits] = useState({ min: 20, max: 10000, focus_max: 200 });
   const [focus, setFocus] = useState("");
+  const [isTouched, setIsTouched] = useState(false);
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -204,6 +205,7 @@ export function QuizGenerator() {
       const draft = getDraft("quiz");
       if (draft && typeof draft === "string") {
         setText(draft);
+        setIsTouched(true);
       }
     }
   }, [location.state]);
@@ -228,6 +230,7 @@ export function QuizGenerator() {
   const handleTextChange = (e) => {
     const val = e.target.value;
     setText(val);
+    setIsTouched(true);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       if (val.trim()) {
@@ -334,6 +337,7 @@ export function QuizGenerator() {
   const handleClear = () => {
     setText("");
     setFocus("");
+    setIsTouched(false);
     clearDraft("quiz");
     try {
       localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
@@ -539,16 +543,11 @@ export function QuizGenerator() {
         />
       </div>
 
-      {/* Focus Topic Setting */}
+      {/* Focus Topic Setting with Shared FieldCounter (1.6) */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="quiz-focus-input" className="text-xs font-semibold text-ink">
-            Focus Topic <span className="font-normal text-ink-subtle">(optional)</span>
-          </label>
-          <span className="text-[11px] font-mono tabular-nums text-ink-subtle">
-            {focus.length} / {limits.focus_max || 200}
-          </span>
-        </div>
+        <label htmlFor="quiz-focus-input" className="text-xs font-semibold text-ink block">
+          Focus Topic <span className="font-normal text-ink-subtle">(optional)</span>
+        </label>
         <input
           id="quiz-focus-input"
           type="text"
@@ -559,9 +558,11 @@ export function QuizGenerator() {
           maxLength={limits.focus_max || 200}
           className="w-full text-xs sm:text-sm font-sans px-3.5 py-2 bg-white border border-ink-border rounded focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors text-ink placeholder:text-ink-subtle/60"
         />
-        <p className="text-[11px] text-ink-subtle">
-          Directs questions toward this topic while remaining grounded in your notes.
-        </p>
+        <FieldCounter
+          count={focus.length}
+          max={limits.focus_max || 200}
+          helperText="Directs questions toward this topic while remaining grounded in your notes."
+        />
       </div>
 
       {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
@@ -599,18 +600,12 @@ export function QuizGenerator() {
           </Button>
         </div>
 
-        {!isValid && disabledReason && (
+        {!isValid && isTouched && disabledReason && (
           <p
             id="submit-disabled-reason"
             className="text-[11px] text-ink-subtle text-right"
           >
             {disabledReason}
-          </p>
-        )}
-
-        {isValid && (
-          <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>

@@ -117,6 +117,7 @@ export function ConceptExplainer() {
   const [sessionId, setSessionId] = useState(null);
   const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 3, max: 300 });
+  const [isTouched, setIsTouched] = useState(false);
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
@@ -151,7 +152,10 @@ export function ConceptExplainer() {
     } else {
       const draft = getDraft("explainer");
       if (draft && typeof draft === "object") {
-        if (draft.concept) setConcept(draft.concept);
+        if (draft.concept) {
+          setConcept(draft.concept);
+          setIsTouched(true);
+        }
         if (draft.subject) setSubject(draft.subject);
         if (draft.selectedLevel) setSelectedLevel(draft.selectedLevel);
       }
@@ -202,6 +206,7 @@ export function ConceptExplainer() {
   const handleConceptChange = (e) => {
     const val = e.target.value.slice(0, limits.max);
     setConcept(val);
+    setIsTouched(true);
     saveCurrentDraft(val, subject, selectedLevel);
   };
 
@@ -330,6 +335,7 @@ export function ConceptExplainer() {
   const handleClear = () => {
     setConcept("");
     setSubject("Not specified");
+    setIsTouched(false);
     setExplainerCache({});
     clearDraft("explainer");
     setSessionId(null);
@@ -446,18 +452,12 @@ export function ConceptExplainer() {
           </Button>
         </div>
 
-        {!isValid && disabledReason && (
+        {!isValid && isTouched && disabledReason && (
           <p
             id="submit-disabled-reason"
             className="text-[11px] text-ink-subtle text-right"
           >
             {disabledReason}
-          </p>
-        )}
-
-        {isValid && (
-          <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>

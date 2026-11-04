@@ -55,6 +55,7 @@ export function Summarizer() {
   const [sessionId, setSessionId] = useState(null);
   const [reviewedSections, setReviewedSections] = useState(new Set());
   const [limits, setLimits] = useState({ min: 20, max: 10000 });
+  const [isTouched, setIsTouched] = useState(false);
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
@@ -86,6 +87,7 @@ export function Summarizer() {
       const draft = getDraft("summarizer");
       if (draft && typeof draft === "string") {
         setText(draft);
+        setIsTouched(true);
       }
     }
   }, [location.state]);
@@ -114,6 +116,7 @@ export function Summarizer() {
   const handleTextChange = (e) => {
     const val = e.target.value;
     setText(val);
+    setIsTouched(true);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       if (val.trim()) {
@@ -208,6 +211,7 @@ export function Summarizer() {
 
   const handleClear = () => {
     setText("");
+    setIsTouched(false);
     clearDraft("summarizer");
     setStatus("empty");
     setResult(null);
@@ -250,19 +254,12 @@ export function Summarizer() {
           )}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-1">
-          <FieldCounter
-            count={charCount}
-            max={limits.max}
-            min={limits.min}
-            helperText="20 to 10,000 characters."
-          />
-          {charCount >= 20 && (
-            <span className="text-[11px] font-sans tabular-nums text-ink-subtle">
-              ~{text.trim().split(/\s+/).length} words · ~{Math.max(1, Math.ceil(text.trim().split(/\s+/).length / 200))} min read
-            </span>
-          )}
-        </div>
+        <FieldCounter
+          count={charCount}
+          max={limits.max}
+          min={limits.min}
+          helperText="20 to 10,000 characters."
+        />
       </div>
 
       {/* Action Buttons & Disabled Reason - Sticky above bottom nav on mobile (C12) */}
@@ -300,18 +297,12 @@ export function Summarizer() {
           </Button>
         </div>
 
-        {!isValid && disabledReason && (
+        {!isValid && isTouched && disabledReason && (
           <p
             id="submit-disabled-reason"
             className="text-[11px] text-ink-subtle text-right"
           >
             {disabledReason}
-          </p>
-        )}
-
-        {isValid && (
-          <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>

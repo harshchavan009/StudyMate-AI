@@ -44,6 +44,7 @@ export function AnswerImprover() {
   const [result, setResult] = useState(null);
   const [liveAcceptedText, setLiveAcceptedText] = useState(null);
   const [limits, setLimits] = useState({ min: 10, max: 5000, subject_max: 200 });
+  const [isTouched, setIsTouched] = useState(false);
   const draftTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const resultHeadingRef = useRef(null);
@@ -71,7 +72,10 @@ export function AnswerImprover() {
     } else {
       const draft = getDraft("improver");
       if (draft && typeof draft === "object") {
-        if (draft.answer) setAnswer(draft.answer);
+        if (draft.answer) {
+          setAnswer(draft.answer);
+          setIsTouched(true);
+        }
         if (draft.subjectOrTopic) setSubjectOrTopic(draft.subjectOrTopic);
       }
     }
@@ -107,6 +111,7 @@ export function AnswerImprover() {
   const handleAnswerChange = (e) => {
     const val = e.target.value;
     setAnswer(val);
+    setIsTouched(true);
     saveCurrentDraft(val, subjectOrTopic);
   };
 
@@ -202,6 +207,7 @@ export function AnswerImprover() {
   const handleClear = () => {
     setAnswer("");
     setSubjectOrTopic("");
+    setIsTouched(false);
     clearDraft("improver");
     setStatus("empty");
     setResult(null);
@@ -224,16 +230,11 @@ export function AnswerImprover() {
 
   const inputPanel = (
     <InputPanel onSubmit={handleGenerate}>
-      {/* Optional Subject Context */}
+      {/* Optional Subject Context with Shared FieldCounter (1.6) */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="improver-subject" className="text-xs font-semibold text-ink">
-            Subject or Topic <span className="text-ink-subtle font-normal">(optional)</span>
-          </label>
-          <span className="text-[11px] text-ink-subtle tabular-nums font-sans">
-            {subjectOrTopic.length} / {limits.subject_max}
-          </span>
-        </div>
+        <label htmlFor="improver-subject" className="text-xs font-semibold text-ink block">
+          Subject or Topic <span className="text-ink-subtle font-normal">(optional)</span>
+        </label>
         <input
           id="improver-subject"
           type="text"
@@ -243,6 +244,11 @@ export function AnswerImprover() {
           maxLength={limits.subject_max}
           disabled={status === "loading"}
           className="w-full text-xs px-3 py-2 bg-white border border-ink-border rounded focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand disabled:bg-[#F5F4F0] truncate transition-colors"
+        />
+        <FieldCounter
+          count={subjectOrTopic.length}
+          max={limits.subject_max}
+          helperText="Optional academic topic context for specialized vocabulary."
         />
       </div>
 
@@ -322,18 +328,12 @@ export function AnswerImprover() {
           </Button>
         </div>
 
-        {!isValid && disabledReason && (
+        {!isValid && isTouched && disabledReason && (
           <p
             id="submit-disabled-reason"
             className="text-[11px] text-ink-subtle text-right"
           >
             {disabledReason}
-          </p>
-        )}
-
-        {isValid && (
-          <p className="text-[11px] text-ink-subtle text-right">
-            Press <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-[#EAE8E3] border border-ink-border/60 rounded text-[10px] font-mono text-ink shadow-[0_1px_0_rgba(0,0,0,0.06)]">Enter</kbd> to submit
           </p>
         )}
       </div>
