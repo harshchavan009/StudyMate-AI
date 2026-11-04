@@ -258,7 +258,7 @@ export function Home() {
   const handleStartStudySet = (e) => {
     if (e) e.preventDefault();
     if (input.trim().length < 20 || input.length > 10000) return;
-    navigate("/study-set", { state: { sourceText: input } });
+    navigate("/study-set/workspace", { state: { sourceText: input } });
   };
 
   const handleSelectPreset = (preset) => {

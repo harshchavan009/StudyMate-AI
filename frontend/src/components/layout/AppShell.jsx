@@ -113,7 +113,7 @@ export function AppShell() {
                 </button>
 
                 <Link
-                  to="/study-set"
+                  to="/study-set/workspace"
                   state={{ isNew: true }}
                   className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-xs font-medium text-brand bg-brand-tint border border-brand/20 hover:bg-brand-tint/80 transition-colors"
                 >
