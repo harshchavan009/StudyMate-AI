@@ -21,8 +21,10 @@ export default function App() {
           <Route path="summarizer" element={<Summarizer />} />
           <Route path="quiz" element={<QuizGenerator />} />
           <Route path="answer-improver" element={<AnswerImprover />} />
+          <Route path="improver" element={<AnswerImprover />} />
           <Route path="concept-explainer" element={<ConceptExplainer />} />
           <Route path="study-set" element={<StudySetList />} />
+          <Route path="study-sets" element={<StudySetList />} />
           <Route path="study-set/workspace" element={<StudySet />} />
           <Route path="study-set/:id" element={<StudySet />} />
           <Route path="help" element={<Help />} />
