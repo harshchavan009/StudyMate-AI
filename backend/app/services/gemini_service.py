@@ -199,10 +199,14 @@ class GeminiService:
                 if "questions" not in data or not isinstance(data["questions"], list):
                     raise ValueError("JSON response missing 'questions' list.")
 
+                questions_raw = data.get("questions", [])
+                if len(questions_raw) != count:
+                    raise ValueError(f"Generated {len(questions_raw)} questions, but exactly {count} were requested.")
+
                 parsed_questions = []
                 seen_questions = set()
 
-                for idx, q in enumerate(data["questions"][:count]):
+                for idx, q in enumerate(questions_raw):
                     q_id = q.get("id", idx + 1)
                     q_stem = str(q.get("question", "")).strip()
                     if not q_stem:
@@ -250,6 +254,8 @@ class GeminiService:
                 raise
             except Exception as e:
                 logger.warning("Quiz generation attempt %d failed: %s", attempt + 1, str(e))
+                # Append specific failure reason to prompt for bounded retry (Step 2 requirement)
+                prompt = f"{prompt}\n\nPREVIOUS ATTEMPT FAILED: {str(e)}. Please correct this error, returning strictly {count} non-duplicate questions with 4 options each."
 
         raise HTTPException(
             status_code=502,

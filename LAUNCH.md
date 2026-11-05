@@ -35,7 +35,7 @@ This document tracks the deployment and production launch status for StudyMate A
   - Strict Content-Security-Policy, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy` applied on both backend middleware and `frontend/vercel.json`.
 
 - [x] **Automated Test Suite & Vulnerability Audits**:
-  - Pytest suite: 30 passing test cases across `test_api.py` and `test_prompts.py`.
+  - Pytest suite: 35 passing test cases across `test_api.py` and `test_prompts.py`.
   - `npm audit`: 0 vulnerabilities.
   - `pip-audit`: 0 vulnerabilities.
   - GitHub Actions CI workflow configured at `.github/workflows/ci.yml`.

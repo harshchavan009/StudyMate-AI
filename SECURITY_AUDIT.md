@@ -99,19 +99,21 @@ StudyMate AI was subjected to a comprehensive security review and verification a
 
 ## Summary Matrix
 
-| Audit Item | Scope | Status | Notes |
-| :--- | :--- | :--- | :--- |
-| 1. API Keys | Frontend / Dist | Passed | Gemini key confined to backend env |
-| 2. Env Vars | Startup / Config | Passed | Fails fast on missing production key |
-| 3. Git Secrets | Git History | Passed | Zero leaked keys in repository |
-| 4. Input Handling | Pydantic / React | Passed | Whitespace stripped, lengths bounded, 0 innerHTML |
-| 5. XSS Prevention | CSP / Encoding | Passed | Strict CSP on backend and Vercel |
-| 6. Rate Limiting | SlowAPI | Passed | IP-based limits with friendly 429 payload |
-| 7. CORS Lockdown | FastAPI Middleware | Passed | Strict FRONTEND_URL matching, no wildcard |
-| 8. Security Headers | HTTP Headers | Passed | Nosniff, DENY, CSP, Referrer, Permissions, HSTS |
-| 9. Debug Disabled | Exception Handler | Passed | Docs disabled in prod, stack traces hidden |
-| 10. Dependencies | npm / pip audit | Passed | 0 vulnerabilities in frontend and backend |
-| 11. Asset Cleanup | Public / Source | Passed | Zero console.logs, clean public assets |
-| 12. Safe Logging | Python Logging | Passed | Keys and study text never logged |
-| 13. Database / Auth | Architecture | N/A | No user accounts or database needed |
+All checks verified on November 5, 2026.
+
+| # | Audit Item | Scope | Status | Verification Command & Date |
+| :-: | :--- | :--- | :---: | :--- |
+| **1** | API Keys Isolation | Frontend / Dist | **Passed** | `grep -rnE "AIza[a-zA-Z0-9_-]{35}" frontend/dist/ frontend/src/` (Nov 5, 2026) |
+| **2** | Env Vars & Startup | Config / Lifespan | **Passed** | `cd backend && python -c "from app.config import settings; print(settings.GEMINI_MODEL)"` (Nov 5, 2026) |
+| **3** | Git Secrets Scan | Git Commit Log | **Passed** | `git log -p \| grep -E "AIza[a-zA-Z0-9_-]{35}"` (Nov 5, 2026) |
+| **4** | Input Handling | Pydantic / React | **Passed** | `cd backend && pytest tests/test_api.py -k "rejects"` (Nov 5, 2026) |
+| **5** | XSS & Exact CSP | CSP Headers | **Passed** | `curl -I http://127.0.0.1:8000/api/health` (Nov 5, 2026) |
+| **6** | Rate Limiting | SlowAPI & Proxy | **Passed** | `cd backend && pytest tests/test_api.py -k "test_rate_limiting"` (Nov 5, 2026) |
+| **7** | CORS Lockdown | FastAPI CORSMiddleware | **Passed** | `curl -H "Origin: http://untrusted-origin.com" -I http://127.0.0.1:8000/api/health` (Nov 5, 2026) |
+| **8** | Security Headers | Response Headers | **Passed** | `curl -I http://127.0.0.1:8000/api/health` (Nov 5, 2026) |
+| **9** | Debug & Info Leakage | Exception Handlers | **Passed** | `cd backend && pytest tests/test_api.py -k "test_unexpected_exception_returns_500"` (Nov 5, 2026) |
+| **10** | Dependencies Audit | npm / pip audit | **Passed** | `cd frontend && npm audit && cd ../backend && pip-audit` (Nov 5, 2026) |
+| **11** | Asset Cleanup | Public / Source | **Passed** | `grep -rn "console.log" frontend/src/` (Nov 5, 2026) |
+| **12** | Safe Logging | Backend Logger | **Passed** | `grep -rn "logger\." backend/app/` (Nov 5, 2026) |
+| **13** | Database / Auth | Architecture | **N/A** | Architecture review: zero database and zero authentication dependencies |
 

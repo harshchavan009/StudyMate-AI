@@ -48,12 +48,26 @@ sequenceDiagram
     end
 ```
 
-### Lifecycle Stages
-1. **Client Submission**: The user enters notes into the validated textarea. The interface tracks character counts using tabular figures and prevents submission if bounds are violated.
-2. **Reverse Proxy and Rate Limiting**: The request passes through the web server to FastAPI. The `get_client_ip` utility extracts the real client IP from `X-Forwarded-For` proxy headers. SlowAPI enforces a 15 req/min quota on AI generation endpoints.
-3. **Pydantic Model Validation**: Inputs are stripped of leading/trailing whitespace (`str_strip_whitespace=True`) and checked against minimum and maximum boundaries. Malformed bodies trigger an immediate HTTP 422 standard error response.
-4. **Prompt Construction**: The validated text is enclosed inside strict `=== STUDENT INPUT START ===` and `=== STUDENT INPUT END ===` delimiters and paired with Role, Task, Instructions, and JSON Output Format schemas.
-5. **LLM Invocation & Parsing**: The Gemini API executes the prompt with `response_mime_type="application/json"`. The returned JSON is cleaned, checked for em dashes, and validated against the Pydantic response schema before returning to the frontend.
+### Lifecycle Stages & Code References
+1. **Client Submission**:
+   - File: `frontend/src/pages/Summarizer.jsx` -> Function: `handleGenerate(e)`
+   - File: `frontend/src/lib/api.js` -> Function: `api.summarize(text, options)`
+   - Validates character bounds (min 20, max 10,000) using `limits` fetched from `GET /api/config`.
+2. **Reverse Proxy and Rate Limiting**:
+   - File: `backend/app/api/rate_limit.py` -> Function: `get_client_ip(request)`
+   - Extracts real client IP from `X-Forwarded-For` header. Enforces 15 req/min via SlowAPI decorator `@limiter.limit`.
+3. **Pydantic Model Validation**:
+   - File: `backend/app/schemas.py` -> Class: `SummarizeRequest`
+   - Strips whitespace (`str_strip_whitespace=True`) and validates non-empty text (`validate_text_not_empty`).
+4. **Prompt Construction**:
+   - File: `backend/app/prompts.py` -> Function: `build_summarizer_prompt(text)`
+   - Constructs 5-part prompt isolating text inside `=== STUDENT INPUT START ===` and `=== STUDENT INPUT END ===`.
+5. **LLM Invocation & Parsing**:
+   - File: `backend/app/services/gemini_service.py` -> Functions: `generate_summary(text)`, `_call_model(prompt)`, `clean_json_string(raw)`
+   - Invokes `model.generate_content` with `response_mime_type="application/json"`.
+   - Cleans response fences, strips em dashes, and validates against `SummarizeResponse`.
+6. **Delivery & UI State Update**:
+   - File: `frontend/src/pages/Summarizer.jsx` -> Updates `result`, saves session to `localStorage`, and focuses heading.
 
 ---
 

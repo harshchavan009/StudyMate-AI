@@ -187,20 +187,96 @@ def test_malformed_json_after_retries_returns_502(client: TestClient):
         assert res.json()["error"]["code"] == "BAD_GATEWAY"
 
 
-def test_quiz_wrong_question_count_triggers_retry_and_502(client: TestClient):
-    """When quiz generator receives wrong number of questions, it retries and fails with 502."""
-    bad_quiz = json.dumps({
+def test_invalid_gemini_model_rejected():
+    """Config must reject unsupported GEMINI_MODEL values at startup."""
+    from app.config import Settings
+    with pytest.raises(ValueError, match="not supported"):
+        Settings(GEMINI_MODEL="unsupported-claude-or-gpt")
+
+
+def test_quiz_duplicate_question_triggers_retry_and_502(client: TestClient):
+    """Duplicate question stems (case-insensitive) must be rejected and trigger retry/502."""
+    duplicate_quiz = json.dumps({
         "difficulty": "medium",
-        "question_count": 2,
+        "question_count": 5,
         "questions": [
-            {"id": 1, "question": "Q1?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 1"},
-            {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+            {"id": 1, "question": "What is DNS?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 1"},
+            {"id": 2, "question": "what is dns?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+            {"id": 3, "question": "Q3?", "options": ["A", "B", "C", "D"], "correct_index": 2, "explanation": "Exp 3"},
+            {"id": 4, "question": "Q4?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 4"},
+            {"id": 5, "question": "Q5?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 5"},
         ]
     })
-    with patch.object(gemini_service, "_call_model", return_value=bad_quiz):
+    with patch.object(gemini_service, "_call_model", return_value=duplicate_quiz):
         res = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
         assert res.status_code == 502
         assert "could not be validated after 2 retries" in res.json()["detail"].lower()
+
+
+def test_quiz_invalid_options_count_triggers_retry_and_502(client: TestClient):
+    """Question with != 4 options must be rejected and trigger retry/502."""
+    bad_options_quiz = json.dumps({
+        "difficulty": "medium",
+        "question_count": 5,
+        "questions": [
+            {"id": 1, "question": "Q1?", "options": ["A", "B", "C"], "correct_index": 0, "explanation": "Exp 1"},
+            {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+            {"id": 3, "question": "Q3?", "options": ["A", "B", "C", "D"], "correct_index": 2, "explanation": "Exp 3"},
+            {"id": 4, "question": "Q4?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 4"},
+            {"id": 5, "question": "Q5?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 5"},
+        ]
+    })
+    with patch.object(gemini_service, "_call_model", return_value=bad_options_quiz):
+        res = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
+        assert res.status_code == 502
+
+
+def test_quiz_invalid_correct_index_triggers_retry_and_502(client: TestClient):
+    """Question with correct_index out of bounds must trigger retry/502."""
+    bad_index_quiz = json.dumps({
+        "difficulty": "medium",
+        "question_count": 5,
+        "questions": [
+            {"id": 1, "question": "Q1?", "options": ["A", "B", "C", "D"], "correct_index": 5, "explanation": "Exp 1"},
+            {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+            {"id": 3, "question": "Q3?", "options": ["A", "B", "C", "D"], "correct_index": 2, "explanation": "Exp 3"},
+            {"id": 4, "question": "Q4?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 4"},
+            {"id": 5, "question": "Q5?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 5"},
+        ]
+    })
+    with patch.object(gemini_service, "_call_model", return_value=bad_index_quiz):
+        res = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
+        assert res.status_code == 502
+
+
+def test_quiz_empty_explanation_triggers_retry_and_502(client: TestClient):
+    """Question with empty explanation must trigger retry/502."""
+    bad_exp_quiz = json.dumps({
+        "difficulty": "medium",
+        "question_count": 5,
+        "questions": [
+            {"id": 1, "question": "Q1?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "   "},
+            {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+            {"id": 3, "question": "Q3?", "options": ["A", "B", "C", "D"], "correct_index": 2, "explanation": "Exp 3"},
+            {"id": 4, "question": "Q4?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 4"},
+            {"id": 5, "question": "Q5?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 5"},
+        ]
+    })
+    with patch.object(gemini_service, "_call_model", return_value=bad_exp_quiz):
+        res = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
+        assert res.status_code == 502
+
+
+def test_unexpected_exception_returns_500(client: TestClient):
+    """Unhandled internal exceptions return standard 500 without leaking stack traces."""
+    with patch.object(gemini_service, "generate_summary", side_effect=RuntimeError("Database/Disk crash")):
+        res = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res.status_code == 500
+        data = res.json()
+        assert data["success"] is False
+        assert data["error"]["code"] == "INTERNAL_SERVER_ERROR"
+        assert "stack" not in data
+        assert "RuntimeError" not in data["error"]["message"]
 
 
 # ---------------------------------------------------------

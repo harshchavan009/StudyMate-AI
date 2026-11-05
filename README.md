@@ -239,7 +239,7 @@ Open your browser to `http://localhost:5173`.
 
 ## 17. Running the Automated Test Suite
 
-The test suite contains 30 passing automated tests covering all features, prompts, rate limiting, and failure modes.
+The test suite contains 35 passing automated tests covering all features, prompts, rate limiting, and failure modes.
 
 ```bash
 cd backend
