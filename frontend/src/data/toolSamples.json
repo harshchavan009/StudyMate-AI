@@ -1,13 +1,13 @@
 {
   "metadata": {
     "generated_at": "2026-11-04T12:50:18.971361Z",
-    "model": "gemini-1.5-flash",
+    "model": "gemini-3.8-flash",
     "source": "StudyMate AI Backend"
   },
   "summarizer": {
     "provenance": {
       "date": "2026-11-04",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-3.8-flash",
       "endpoint": "/api/summarize"
     },
     "topic_overview": "The Domain Name System (DNS) serves as the Internet's hierarchical and decentralized directory service. Its primary purpose is translating human-readable hostnames into numerical IP addresses required for network routing and resource location.",
@@ -47,7 +47,7 @@
   "quiz": {
     "provenance": {
       "date": "2026-11-04",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-3.8-flash",
       "endpoint": "/api/generate-quiz"
     },
     "difficulty": "medium",
@@ -118,7 +118,7 @@
   "improver": {
     "provenance": {
       "date": "2026-11-04",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-3.8-flash",
       "endpoint": "/api/improve-answer"
     },
     "original_answer": "Mitochondria makes energy for the cell using glucose and oxygen to produce ATP through cellular respiration.",
@@ -155,7 +155,7 @@
   "explainer": {
     "provenance": {
       "date": "2026-11-04",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-3.8-flash",
       "endpoint": "/api/explain"
     },
     "concept": "Photosynthesis",

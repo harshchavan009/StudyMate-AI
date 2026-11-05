@@ -35,10 +35,16 @@ async def lifespan(app: FastAPI):
             "Notice: GEMINI_API_KEY is not configured. AI endpoints will return HTTP 503."
         )
     else:
-        logger.info(
-            "Gemini API key loaded successfully. Active model: %s",
-            settings.GEMINI_MODEL,
-        )
+        from app.services.gemini_service import verify_gemini_model_exists
+        try:
+            verify_gemini_model_exists(settings.GEMINI_MODEL, settings.GEMINI_API_KEY)
+            logger.info(
+                "Gemini API key loaded successfully. Verified active model: %s",
+                settings.GEMINI_MODEL,
+            )
+        except Exception as exc:
+            logger.error("Startup model verification failed: %s", exc)
+            raise
     logger.info("Allowed CORS origins: %s", settings.allowed_origins)
     yield
     logger.info("Shutting down StudyMate AI backend.")

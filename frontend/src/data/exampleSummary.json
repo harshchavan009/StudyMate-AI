@@ -1,7 +1,7 @@
 {
   "source_text": "The Domain Name System (DNS) is a hierarchical and decentralized naming system used to identify computers, services, and other resources reachable through the Internet. It translates more readily memorized domain names to the numerical IP addresses needed for locating and identifying computer services and devices with the underlying network protocols. By delegating the responsibility of assigning domain names and mapping those names to Internet resources by designating authoritative name servers for each domain, DNS implements a distributed and fault-tolerant service.",
   "generated_at": "November 3, 2026",
-  "model": "gemini-1.5-flash",
+  "model": "gemini-3.8-flash",
   "result": {
     "topic_overview": "The Domain Name System (DNS) serves as the Internet's hierarchical and decentralized directory service. Its primary purpose is translating human-readable hostnames into numerical IP addresses required for network routing and resource location.",
     "key_concepts": [

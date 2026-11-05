@@ -39,6 +39,24 @@ def sanitize_dashes(text: str) -> str:
     return text.replace("\u2014", ", ").replace("\u2013", ", ")
 
 
+def verify_gemini_model_exists(model_name: str, api_key: str) -> bool:
+    """Ask the Google Gen AI API whether the configured model exists.
+
+    Fails fast with a clear message if the model does not exist or is inaccessible.
+    """
+    if not api_key:
+        return False
+    genai.configure(api_key=api_key)
+    name = model_name if model_name.startswith("models/") else f"models/{model_name}"
+    try:
+        genai.get_model(name)
+        return True
+    except Exception as exc:
+        raise RuntimeError(
+            f"Configured GEMINI_MODEL '{model_name}' does not exist or is not accepted by the Gemini API: {exc}"
+        ) from exc
+
+
 def clean_json_string(raw: str) -> str:
     """Extract and sanitize raw JSON string from LLM output."""
     raw = raw.strip()
