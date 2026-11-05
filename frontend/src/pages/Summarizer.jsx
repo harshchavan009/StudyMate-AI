@@ -193,6 +193,7 @@ export function Summarizer() {
 
   const handleViewSample = () => {
     if (toolSamples?.summarizer) {
+      setError(null);
       setResult(toolSamples.summarizer);
       setIsSample(true);
       setStatus("success");

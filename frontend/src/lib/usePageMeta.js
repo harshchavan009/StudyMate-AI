@@ -3,7 +3,11 @@ import { useEffect } from "react";
 export function usePageMeta(title, description) {
   useEffect(() => {
     if (title) {
-      document.title = `${title} | StudyMate AI`;
+      if (title === "StudyMate AI") {
+        document.title = "StudyMate AI";
+      } else {
+        document.title = `${title} | StudyMate AI`;
+      }
     }
 
     if (description) {

@@ -221,6 +221,7 @@ export function AnswerImprover() {
 
   const handleViewSample = () => {
     if (toolSamples?.improver) {
+      setError(null);
       setResult(toolSamples.improver);
       setIsSample(true);
       setStatus("success");

@@ -1,0 +1,4 @@
+Title: StudyMate AI - Academic Study Assistant & Active Recall Utility
+Description: A local-first, distraction-free academic study utility powered by Google Gemini API. Transforms lecture notes into 6-section academic summaries, generates 4-option active recall practice quizzes, refines student draft answers, and explains complex concepts across learning depths.
+Topics: academic-study-assistant, gemini-api, fastapi, react, tailwindcss, vite, active-recall, study-tools, educational-technology, pydantic
+Website: https://studymate.ai

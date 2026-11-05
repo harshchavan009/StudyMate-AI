@@ -355,6 +355,7 @@ export function QuizGenerator() {
 
   const handleViewSample = () => {
     if (toolSamples?.quiz) {
+      setError(null);
       const preparedData = {
         ...toolSamples.quiz,
         questions: toolSamples.quiz.questions || [],

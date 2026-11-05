@@ -350,6 +350,7 @@ export function ConceptExplainer() {
 
   const handleViewSample = () => {
     if (toolSamples?.explainer) {
+      setError(null);
       const lvl = toolSamples.explainer.level?.toLowerCase() || "intermediate";
       setSelectedLevel(lvl);
       setExplainerCache({ [lvl]: toolSamples.explainer });
