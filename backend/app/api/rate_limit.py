@@ -8,10 +8,17 @@ from app.config import settings
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP respecting X-Forwarded-For proxy headers when present."""
+    """Extract client IP securely from X-Forwarded-For proxy headers.
+
+    Reads the right-most entry of X-Forwarded-For, which represents the IP
+    appended by the immediate trusted reverse proxy (e.g. Render or Cloudflare),
+    ensuring untrusted clients cannot inject fake leading headers to bypass rate limits.
+    """
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded_for.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     if request.client and request.client.host:
         return request.client.host
     return "127.0.0.1"

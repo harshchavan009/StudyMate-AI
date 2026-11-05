@@ -187,11 +187,27 @@ def test_malformed_json_after_retries_returns_502(client: TestClient):
         assert res.json()["error"]["code"] == "BAD_GATEWAY"
 
 
-def test_invalid_gemini_model_rejected():
-    """Config must reject unsupported GEMINI_MODEL values at startup."""
+def test_empty_gemini_model_rejected():
+    """Settings must reject empty GEMINI_MODEL values."""
     from app.config import Settings
-    with pytest.raises(ValueError, match="not supported"):
-        Settings(GEMINI_MODEL="unsupported-claude-or-gpt")
+    with pytest.raises(ValueError, match="cannot be empty"):
+        Settings(GEMINI_MODEL="   ")
+
+
+def test_startup_model_verification_success():
+    """Startup API check succeeds when Google Gen AI reports model exists."""
+    from app.services.gemini_service import verify_gemini_model_exists
+    with patch("google.generativeai.get_model", return_value={"name": "models/gemini-3.8-flash"}):
+        result = verify_gemini_model_exists("gemini-3.8-flash", "test-key-123")
+        assert result is True
+
+
+def test_startup_model_verification_failure_raises_runtime_error():
+    """Startup API check raises clear RuntimeError when model does not exist."""
+    from app.services.gemini_service import verify_gemini_model_exists
+    with patch("google.generativeai.get_model", side_effect=Exception("404 Model models/invalid-model not found")):
+        with pytest.raises(RuntimeError, match="does not exist or is not accepted by the Gemini API"):
+            verify_gemini_model_exists("invalid-model", "test-key-123")
 
 
 def test_quiz_duplicate_question_triggers_retry_and_502(client: TestClient):
@@ -509,4 +525,27 @@ def test_rate_limiting_tracks_x_forwarded_for_headers(client: TestClient):
     # IP2 should NOT be rate limited yet (returns 503 since no key, not 429)
     resp_ip2 = client.post("/api/quiz", json=payload, headers={"X-Forwarded-For": ip2})
     assert resp_ip2.status_code == 503, f"IP2 should not be blocked by IP1 limit, got {resp_ip2.status_code}"
+
+
+def test_fake_leading_x_forwarded_for_cannot_bypass_rate_limit(client: TestClient):
+    """An attacker varying fake leading IPs in X-Forwarded-For cannot bypass rate limiting.
+
+    The limiter extracts the right-most IP appended by the trusted proxy.
+    """
+    real_proxy_appended_ip = "203.0.113.195"
+    payload = {
+        "text": "This is a sufficiently long study text that reaches the handler.",
+        "difficulty": "medium",
+        "question_count": 5,
+    }
+
+    hit_limit = False
+    for i in range(25):
+        spoofed_header = f"fake-client-{i}.internal, 10.0.0.{i}, {real_proxy_appended_ip}"
+        resp = client.post("/api/quiz", json=payload, headers={"X-Forwarded-For": spoofed_header})
+        if resp.status_code == 429:
+            hit_limit = True
+            break
+
+    assert hit_limit, "Varying fake leading IPs must not bypass rate limit on right-most IP."
 
