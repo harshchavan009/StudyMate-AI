@@ -15,10 +15,17 @@ limiter = Limiter(
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """Friendly 429 response when IP exceeds request limit."""
+    msg = "You have submitted several requests in a short time. Please wait a moment before trying again."
     return JSONResponse(
         status_code=429,
         content={
-            "detail": "You have submitted several requests in a short time. Please wait a moment before trying again.",
+            "success": False,
+            "detail": msg,
+            "error": {
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": msg,
+                "details": None,
+            },
             "type": "rate_limit_exceeded",
         },
     )

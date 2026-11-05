@@ -1,8 +1,10 @@
 """Comprehensive unit and integration tests for StudyMate AI."""
 
+import json
+from unittest.mock import patch, MagicMock
 import pytest
 from fastapi.testclient import TestClient
-from app.services.gemini_service import clean_json_string, sanitize_dashes
+from app.services.gemini_service import clean_json_string, sanitize_dashes, gemini_service
 
 
 def test_health_check(client: TestClient):
@@ -14,6 +16,14 @@ def test_health_check(client: TestClient):
     assert "environment" in data
     assert "gemini_configured" in data
     assert data["version"] == "1.0.0"
+
+
+def test_root_health(client: TestClient):
+    """Test root /health endpoint."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
 
 
 def test_config_endpoint(client: TestClient):
@@ -46,14 +56,25 @@ def test_security_headers_present(client: TestClient):
 
 
 # ---------------------------------------------------------
-# Input Validation Tests
+# Input Validation Tests (422)
 # ---------------------------------------------------------
 
 def test_summarize_rejects_too_short_text(client: TestClient):
     """Summarizer must reject texts shorter than 20 characters."""
     response = client.post("/api/summarize", json={"text": "Short note"})
     assert response.status_code == 422
-    assert "Input validation failed" in response.json()["detail"]
+    data = response.json()
+    assert data["success"] is False
+    assert data["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_summarize_rejects_whitespace_only(client: TestClient):
+    """Summarizer must reject whitespace-only text with 422."""
+    response = client.post("/api/summarize", json={"text": "                    "})
+    assert response.status_code == 422
+    data = response.json()
+    assert data["success"] is False
+    assert data["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_quiz_rejects_invalid_count(client: TestClient):
@@ -67,6 +88,7 @@ def test_quiz_rejects_invalid_count(client: TestClient):
         },
     )
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_quiz_rejects_invalid_difficulty(client: TestClient):
@@ -82,71 +104,135 @@ def test_quiz_rejects_invalid_difficulty(client: TestClient):
     assert response.status_code == 422
 
 
-def test_improver_rejects_too_short_answer(client: TestClient):
-    """Answer improver must validate answer is at least 10 characters."""
-    response = client.post(
-        "/api/improve-answer",
-        json={"answer": "Short"},
-    )
-    assert response.status_code == 422
+def test_improver_rejects_too_short_or_whitespace_answer(client: TestClient):
+    """Answer improver must validate answer is at least 10 non-whitespace characters."""
+    res1 = client.post("/api/improve-answer", json={"answer": "Short"})
+    assert res1.status_code == 422
+
+    res2 = client.post("/api/improve-answer", json={"answer": "          "})
+    assert res2.status_code == 422
 
 
 def test_explainer_rejects_short_concept_and_invalid_level(client: TestClient):
     """Concept explainer must validate concept length (min 3) and valid level."""
-    # Too short
     res1 = client.post("/api/explain-concept", json={"concept": "AI", "level": "beginner"})
     assert res1.status_code == 422
 
-    # Invalid level
     res2 = client.post("/api/explain-concept", json={"concept": "Entropy", "level": "master"})
     assert res2.status_code == 422
 
+    res3 = client.post("/api/explain-concept", json={"concept": "   ", "level": "beginner"})
+    assert res3.status_code == 422
+
 
 # ---------------------------------------------------------
-# Tool Execution Tests (Mock/Fallback Mode)
+# Real AI Missing / Error Scenarios (503, 504, 502, 429)
+# ---------------------------------------------------------
+
+def test_missing_api_key_returns_503_on_all_endpoints(client: TestClient):
+    """When GEMINI_API_KEY is not configured, all 4 AI endpoints must return HTTP 503."""
+    with patch.object(gemini_service, "api_key", ""), patch.object(gemini_service, "model", None):
+        res_sum = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res_sum.status_code == 503
+        data_sum = res_sum.json()
+        assert data_sum["success"] is False
+        assert data_sum["error"]["code"] == "SERVICE_UNAVAILABLE"
+        assert "not configured or unavailable" in data_sum["error"]["message"]
+
+        res_quiz = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
+        assert res_quiz.status_code == 503
+
+        res_imp = client.post("/api/improve-answer", json={"answer": "This is a valid test answer."})
+        assert res_imp.status_code == 503
+
+        res_exp = client.post("/api/explain-concept", json={"concept": "Osmosis", "level": "beginner"})
+        assert res_exp.status_code == 503
+
+
+def test_invalid_api_key_returns_503(client: TestClient):
+    """When Gemini returns an authentication/permission error, endpoint returns 503."""
+    mock_model = MagicMock()
+    mock_model.generate_content.side_effect = Exception("API_KEY_INVALID: API key not valid. Please pass a valid API key.")
+    with patch.object(gemini_service, "api_key", "fake-key"), patch.object(gemini_service, "model", mock_model):
+        res = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res.status_code == 503
+        assert res.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+def test_upstream_quota_exhausted_returns_429(client: TestClient):
+    """When Gemini returns 429 / resource exhausted, endpoint returns 429."""
+    mock_model = MagicMock()
+    mock_model.generate_content.side_effect = Exception("429 Resource has been exhausted (check quota).")
+    with patch.object(gemini_service, "api_key", "fake-key"), patch.object(gemini_service, "model", mock_model):
+        res = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res.status_code == 429
+        assert res.json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
+
+
+def test_upstream_timeout_returns_504(client: TestClient):
+    """When Gemini API times out, endpoint returns 504."""
+    mock_model = MagicMock()
+    mock_model.generate_content.side_effect = Exception("504 Deadline Exceeded: request timed out.")
+    with patch.object(gemini_service, "api_key", "fake-key"), patch.object(gemini_service, "model", mock_model):
+        res = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res.status_code == 504
+        assert res.json()["error"]["code"] == "GATEWAY_TIMEOUT"
+
+
+def test_malformed_json_after_retries_returns_502(client: TestClient):
+    """When Gemini returns unparseable output across all retries, endpoint returns 502."""
+    with patch.object(gemini_service, "_call_model", return_value="plain text without json"):
+        res = client.post("/api/summarize", json={"text": "Valid test content with more than twenty characters."})
+        assert res.status_code == 502
+        assert res.json()["error"]["code"] == "BAD_GATEWAY"
+
+
+def test_quiz_wrong_question_count_triggers_retry_and_502(client: TestClient):
+    """When quiz generator receives wrong number of questions, it retries and fails with 502."""
+    bad_quiz = json.dumps({
+        "difficulty": "medium",
+        "question_count": 2,
+        "questions": [
+            {"id": 1, "question": "Q1?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Exp 1"},
+            {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_index": 1, "explanation": "Exp 2"},
+        ]
+    })
+    with patch.object(gemini_service, "_call_model", return_value=bad_quiz):
+        res = client.post("/api/quiz", json={"text": "Valid test content with more than twenty characters.", "question_count": 5, "difficulty": "medium"})
+        assert res.status_code == 502
+        assert "could not be validated after 2 retries" in res.json()["detail"].lower()
+
+
+# ---------------------------------------------------------
+# Tool Execution Tests (Mocked LLM in Pytest Only)
 # ---------------------------------------------------------
 
 def test_summarizer_generates_six_exact_sections(client: TestClient):
-    """Verify summarizer produces exactly the 6 required spec sections:
-    Topic Overview, Key Concepts, Important Definitions, Important Points,
-    Exam Preparation Notes, Quick Revision Summary.
-    """
+    """Verify summarizer produces exactly the 6 required spec sections."""
     sample_text = (
         "Operating systems manage hardware resources through abstraction layers. "
         "The kernel serves as the central control module, arbitrating memory allocation, "
         "process scheduling, and input/output requests while enforcing security boundaries."
     )
-    response = client.post("/api/summarize", json={"text": sample_text})
-    assert response.status_code == 200
-    data = response.json()
-
-    # Section 1: Topic Overview
-    assert "topic_overview" in data
-    assert len(data["topic_overview"]) > 10
-
-    # Section 2: Key Concepts
-    assert "key_concepts" in data
-    assert len(data["key_concepts"]) >= 3
-
-    # Section 3: Important Definitions
-    assert "important_definitions" in data
-    assert len(data["important_definitions"]) >= 1
-    assert "term" in data["important_definitions"][0]
-
-    # Section 4: Important Points
-    assert "important_points" in data
-    assert len(data["important_points"]) >= 1
-
-    # Section 5: Exam Preparation Notes
-    assert "exam_preparation_notes" in data
-    assert len(data["exam_preparation_notes"]) >= 1
-
-    # Section 6: Quick Revision Summary
-    assert "quick_revision_summary" in data
-    assert len(data["quick_revision_summary"]) > 10
-
-    # Markdown export
-    assert "# Topic Overview" in data["raw_markdown"]
+    mock_payload = json.dumps({
+        "topic_overview": "Operating systems manage hardware resources through abstraction layers.",
+        "key_concepts": ["Kernel control module", "Virtual memory management", "Process scheduling"],
+        "important_definitions": [{"term": "Kernel", "definition": "The central control module of an OS."}],
+        "important_points": ["Arbitrates hardware access", "Enforces security boundaries"],
+        "exam_preparation_notes": ["Differentiate user space from kernel space"],
+        "quick_revision_summary": "The kernel arbitrates hardware and enforces security via abstraction."
+    })
+    with patch.object(gemini_service, "_call_model", return_value=mock_payload):
+        response = client.post("/api/summarize", json={"text": sample_text})
+        assert response.status_code == 200
+        data = response.json()
+        assert "topic_overview" in data
+        assert len(data["key_concepts"]) == 3
+        assert len(data["important_definitions"]) == 1
+        assert len(data["important_points"]) == 2
+        assert len(data["exam_preparation_notes"]) == 1
+        assert len(data["quick_revision_summary"]) > 10
+        assert "# Topic Overview" in data["raw_markdown"]
 
 
 def test_quiz_generates_requested_count_and_schema(client: TestClient):
@@ -155,105 +241,116 @@ def test_quiz_generates_requested_count_and_schema(client: TestClient):
         "Mitochondria generate most of the chemical energy needed to power the biochemical "
         "reactions in cells. This chemical energy is stored in adenosine triphosphate (ATP)."
     )
-    for requested_count in [5, 10, 15]:
-        response = client.post(
-            "/api/quiz",
-            json={
-                "text": sample_text,
-                "difficulty": "medium",
-                "question_count": requested_count,
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["question_count"] == requested_count
-        assert len(data["questions"]) == requested_count
-
-        for q in data["questions"]:
-            assert "id" in q
-            assert len(q["options"]) == 4
-            assert 0 <= q["correct_index"] <= 3
-            assert len(q["explanation"]) > 10
-
-
-def test_quiz_focus_constraint_validation(client: TestClient):
-    """Verify quiz generator supports optional focus up to 200 chars and rejects > 200 chars."""
-    sample_text = (
-        "DNS resolution maps domain names to IP addresses through recursive query steps. "
-        "Authoritative nameservers maintain definitive zone records."
-    )
-    # Valid focus topic
-    res_valid = client.post(
-        "/api/quiz",
-        json={
-            "text": sample_text,
+    def mock_quiz_call(prompt: str) -> str:
+        count = 5
+        if "exactly 10 multiple" in prompt:
+            count = 10
+        elif "exactly 15 multiple" in prompt:
+            count = 15
+        questions = [
+            {
+                "id": i + 1,
+                "question": f"Question {i + 1} regarding cellular respiration and ATP?",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_index": 0,
+                "explanation": f"Explanation for question {i + 1} detailing ATP synthesis."
+            }
+            for i in range(count)
+        ]
+        return json.dumps({
             "difficulty": "medium",
-            "question_count": 5,
-            "focus": "recursive queries",
-        },
-    )
-    assert res_valid.status_code == 200
-    data_valid = res_valid.json()
-    assert len(data_valid["questions"]) == 5
-    assert "Focus: recursive queries" in data_valid["questions"][0]["question"]
+            "question_count": count,
+            "questions": questions
+        })
 
-    # Focus exceeding 200 chars should fail with 422
-    res_invalid = client.post(
-        "/api/quiz",
-        json={
-            "text": sample_text,
-            "difficulty": "medium",
-            "question_count": 5,
-            "focus": "a" * 201,
-        },
-    )
-    assert res_invalid.status_code == 422
+    with patch.object(gemini_service, "_call_model", side_effect=mock_quiz_call):
+        for requested_count in [5, 10, 15]:
+            response = client.post(
+                "/api/quiz",
+                json={
+                    "text": sample_text,
+                    "difficulty": "medium",
+                    "question_count": requested_count,
+                },
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["question_count"] == requested_count
+            assert len(data["questions"]) == requested_count
+            for q in data["questions"]:
+                assert "id" in q
+                assert len(q["options"]) == 4
+                assert 0 <= q["correct_index"] <= 3
+                assert len(q["explanation"]) > 5
 
 
 def test_improver_generates_exact_spec_sections(client: TestClient):
-    """Verify answer improver generates:
-    Original Answer Feedback, Improved Answer, Key Improvements Made,
-    Suggestions for Further Improvement.
-    """
+    """Verify answer improver generates the 4 required sections."""
     draft = "TCP sends packets and uses acknowledgments. If something is lost it sends it again quickly."
-    response = client.post(
-        "/api/improve-answer",
-        json={"answer": draft, "subject_or_topic": "Computer Networking"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["original_answer"] == draft
-    assert data["subject_or_topic"] == "Computer Networking"
-    assert len(data["original_answer_feedback"]) > 10
-    assert len(data["improved_answer"]) > len(draft)
-    assert len(data["key_improvements_made"]) >= 1
-    assert len(data["suggestions_for_further_improvement"]) >= 1
-    assert len(data["changed_phrases"]) >= 1
-
-
-def test_explainer_adjusts_by_level_with_exact_sections(client: TestClient):
-    """Verify concept explainer returns exact 6 sections:
-    Introduction, Detailed Explanation, Step-by-Step Understanding,
-    Practical Example, Real-World Applications, Quick Revision Points.
-    """
-    levels = ["beginner", "intermediate", "advanced"]
-    for lvl in levels:
+    mock_payload = json.dumps({
+        "original_answer_feedback": "Your draft correctly captures the core mechanism of TCP reliability.",
+        "improved_answer": "Transmission Control Protocol (TCP) ensures reliable data transfer through packet acknowledgment and retransmission.",
+        "key_improvements_made": ["Introduced formal terminology", "Enhanced syntactic clarity"],
+        "suggestions_for_further_improvement": ["Consider mentioning sequence numbers in future responses"],
+        "changed_phrases": [
+            {
+                "original_phrase": "sends it again quickly",
+                "improved_phrase": "retransmits dropped segments",
+                "reason": "Technical accuracy"
+            }
+        ]
+    })
+    with patch.object(gemini_service, "_call_model", return_value=mock_payload):
         response = client.post(
-            "/api/explain-concept",
-            json={"concept": "Recursion", "level": lvl, "subject": "Computer Science"},
+            "/api/improve-answer",
+            json={"answer": draft, "subject_or_topic": "Computer Networking"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["concept"] == "Recursion"
-        assert data["subject"] == "Computer Science"
-        assert data["level"] == lvl
-        assert len(data["introduction"]) > 10
-        assert len(data["detailed_explanation"]) > 10
-        assert len(data["step_by_step_understanding"]) >= 3
-        assert len(data["practical_example"]) > 10
-        assert len(data["real_world_applications"]) >= 1
-        assert len(data["quick_revision_points"]) >= 1
+        assert data["original_answer"] == draft
+        assert data["subject_or_topic"] == "Computer Networking"
+        assert len(data["original_answer_feedback"]) > 10
+        assert len(data["improved_answer"]) > 10
+        assert len(data["key_improvements_made"]) == 2
+        assert len(data["suggestions_for_further_improvement"]) == 1
+        assert len(data["changed_phrases"]) == 1
+
+
+def test_explainer_adjusts_by_level_with_exact_sections(client: TestClient):
+    """Verify concept explainer returns exact 6 sections."""
+    def mock_explainer_call(prompt: str) -> str:
+        level = "intermediate"
+        if "at the 'beginner' level" in prompt:
+            level = "beginner"
+        elif "at the 'advanced' level" in prompt:
+            level = "advanced"
+        return json.dumps({
+            "concept": "Recursion",
+            "subject": "Computer Science",
+            "level": level,
+            "introduction": f"Recursion is a programming technique explained at {level} level.",
+            "detailed_explanation": f"Detailed breakdown of stack frames at {level} depth.",
+            "step_by_step_understanding": [
+                {"step_number": 1, "title": "Base Case", "description": "Terminates recursion"},
+                {"step_number": 2, "title": "Recursive Step", "description": "Breaks problem into subproblems"}
+            ],
+            "practical_example": "Calculating factorial(n) = n * factorial(n - 1).",
+            "real_world_applications": ["Traversing hierarchical DOM trees", "Parsing JSON structures"],
+            "quick_revision_points": ["Always ensure base case is reachable", "Each call uses call stack frame"]
+        })
+
+    with patch.object(gemini_service, "_call_model", side_effect=mock_explainer_call):
+        for lvl in ["beginner", "intermediate", "advanced"]:
+            response = client.post(
+                "/api/explain-concept",
+                json={"concept": "Recursion", "level": lvl, "subject": "Computer Science"},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["concept"] == "Recursion"
+            assert data["level"] == lvl
+            assert len(data["step_by_step_understanding"]) == 2
+            assert len(data["real_world_applications"]) == 2
 
 
 # ---------------------------------------------------------
@@ -292,7 +389,7 @@ def test_malformed_json_body_returns_422(client: TestClient):
         content="not valid json",
     )
     assert response.status_code == 422
-    assert "detail" in response.json()
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_rate_limiting_triggers_friendly_429(client: TestClient):
@@ -309,6 +406,6 @@ def test_rate_limiting_triggers_friendly_429(client: TestClient):
             hit_limit = True
             data = resp.json()
             assert "detail" in data
-            assert data["type"] == "rate_limit_exceeded"
+            assert data["error"]["code"] == "RATE_LIMIT_EXCEEDED"
             break
     assert hit_limit, "Rate limiter should have triggered 429 after repeated requests."

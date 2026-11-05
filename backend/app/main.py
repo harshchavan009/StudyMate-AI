@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -31,9 +31,14 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(error_msg)
 
     if not settings.GEMINI_API_KEY:
-        logger.warning("Notice: GEMINI_API_KEY is not configured. Backend will operate in fallback mock mode.")
+        logger.warning(
+            "Notice: GEMINI_API_KEY is not configured. AI endpoints will return HTTP 503."
+        )
     else:
-        logger.info("Gemini API key loaded successfully.")
+        logger.info(
+            "Gemini API key loaded successfully. Active model: %s",
+            settings.GEMINI_MODEL,
+        )
     logger.info("Allowed CORS origins: %s", settings.allowed_origins)
     yield
     logger.info("Shutting down StudyMate AI backend.")
@@ -90,8 +95,22 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------
-# Custom Exception Handlers (Prevent Stack Trace Leakage)
+# Custom Exception Handlers (Standard Error Envelope)
 # ---------------------------------------------------------
+HTTP_STATUS_CODE_NAMES = {
+    400: "BAD_REQUEST",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    422: "VALIDATION_ERROR",
+    429: "RATE_LIMIT_EXCEEDED",
+    500: "INTERNAL_SERVER_ERROR",
+    502: "BAD_GATEWAY",
+    503: "SERVICE_UNAVAILABLE",
+    504: "GATEWAY_TIMEOUT",
+}
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Sanitize validation errors and return clear, actionable field messages."""
@@ -103,8 +122,32 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT if hasattr(status, "HTTP_422_UNPROCESSABLE_CONTENT") else 422,
         content={
+            "success": False,
             "detail": "Input validation failed. Please check the submitted fields.",
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Input validation failed. Please check the submitted fields.",
+                "details": errors,
+            },
             "errors": errors,
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Uniform envelope for HTTPExceptions."""
+    code = HTTP_STATUS_CODE_NAMES.get(exc.status_code, "HTTP_ERROR")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "detail": exc.detail,
+            "error": {
+                "code": code,
+                "message": exc.detail,
+                "details": None,
+            },
         },
     )
 
@@ -113,10 +156,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Catch unhandled server errors and avoid exposing stack traces."""
     logger.error("Unhandled internal exception on %s: %s", request.url.path, str(exc), exc_info=True)
+    msg = "An internal server error occurred. Our team has been alerted."
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "An internal server error occurred. Our team has been alerted.",
+            "success": False,
+            "detail": msg,
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": msg,
+                "details": None,
+            },
         },
     )
 
