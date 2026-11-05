@@ -409,3 +409,28 @@ def test_rate_limiting_triggers_friendly_429(client: TestClient):
             assert data["error"]["code"] == "RATE_LIMIT_EXCEEDED"
             break
     assert hit_limit, "Rate limiter should have triggered 429 after repeated requests."
+
+
+def test_rate_limiting_tracks_x_forwarded_for_headers(client: TestClient):
+    """Different client IPs via X-Forwarded-For must have independent rate limit buckets."""
+    ip1 = "198.51.100.1"
+    ip2 = "198.51.100.2"
+    payload = {
+        "text": "This is a sufficiently long study text that reaches the handler.",
+        "difficulty": "medium",
+        "question_count": 5,
+    }
+
+    # Exhaust limit for IP1
+    ip1_limited = False
+    for _ in range(25):
+        resp = client.post("/api/quiz", json=payload, headers={"X-Forwarded-For": ip1})
+        if resp.status_code == 429:
+            ip1_limited = True
+            break
+    assert ip1_limited, "IP1 should be rate limited after exceeding threshold."
+
+    # IP2 should NOT be rate limited yet (returns 503 since no key, not 429)
+    resp_ip2 = client.post("/api/quiz", json=payload, headers={"X-Forwarded-For": ip2})
+    assert resp_ip2.status_code == 503, f"IP2 should not be blocked by IP1 limit, got {resp_ip2.status_code}"
+

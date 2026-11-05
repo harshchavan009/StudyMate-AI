@@ -1,14 +1,24 @@
 """Rate limiting configuration using slowapi."""
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.config import settings
 
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP respecting X-Forwarded-For proxy headers when present."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=get_client_ip,
     default_limits=[settings.RATE_LIMIT_DEFAULT],
 )
 
