@@ -135,3 +135,4 @@ The application integrates with the Google Gen AI SDK (`gemini-1.5-flash` by def
 
 ### Q15: What automated CI/CD safeguards exist?
 **Answer**: The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that triggers on all pushes and pull requests to `main`. It runs the full 30-test Pytest suite, executes backend smoke tests, verifies frontend builds, and performs `npm audit`.
+

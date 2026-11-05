@@ -83,3 +83,4 @@ StudyMate AI pairs an authoritative editorial serif with a high-legibility inter
   - Button state transitions: `120ms`
   - Accordion expand/collapse: `200ms`
   - 3-stage topic processing pipeline: sequential animated progress steps (0 to 3s, 3 to 6s, >6s).
+

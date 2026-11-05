@@ -84,3 +84,4 @@ def test_explainer_prompt_has_all_five_parts():
     # Anti-hallucination check
     assert "Do not introduce fictional facts" in prompt
     assert "—" not in prompt
+

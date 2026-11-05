@@ -66,3 +66,4 @@ else
     echo "${FAILED} smoke test(s) FAILED."
     exit 1
 fi
+

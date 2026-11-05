@@ -92,3 +92,4 @@ This guide provides deployment instructions and a script for presenting StudyMat
      - **Value**: `76.76.21.21`
 4. Wait for DNS propagation and Vercel's automated SSL certificate issuance (typically 2-5 minutes).
 5. Update `FRONTEND_URL` on Render to match your custom domain so that CORS policies allow requests from your custom domain.
+
