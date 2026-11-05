@@ -176,16 +176,19 @@ cd backend
 source venv/bin/activate
 pytest -v
 ```
-All 16 test cases cover:
+All 30 test cases cover:
 - Health check and security headers verification.
 - Central config endpoint (`/api/config`) limits verification.
-- Pydantic input length, format, and type validations.
+- Pydantic input length, format, whitespace, and type validations.
+- 5-part prompt structure, input isolation, and anti-hallucination guardrails.
+- Real AI 503 error handling on missing or invalid keys.
+- Gateway timeout (504), bad gateway (502), and quota rate limit (429) mapping.
 - 6-section academic summarizer structure.
-- Multiple choice quiz generation.
+- Multiple choice quiz generation with exact count, 4 options, and deduplication.
 - Answer improver 4-section breakdown, DiffHighlighter phrases, and fact retention.
 - Concept explainer 6-section breakdown and multi-level depth.
 - Em dash substitution and JSON sanitization.
-- SlowAPI IP-based rate limiting (429 response verification).
+- SlowAPI IP-based rate limiting and X-Forwarded-For proxy header tracking.
 
 ### Frontend Production Build
 ```bash
