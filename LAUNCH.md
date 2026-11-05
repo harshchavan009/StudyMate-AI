@@ -35,7 +35,7 @@ This document tracks the deployment and production launch status for StudyMate A
   - Strict Content-Security-Policy, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy` applied on both backend middleware and `frontend/vercel.json`.
 
 - [x] **Automated Test Suite & Vulnerability Audits**:
-  - Pytest suite: 35 passing test cases across `test_api.py` and `test_prompts.py`.
+  - Pytest suite: 38 passing test cases across `test_api.py` and `test_prompts.py` (verified November 5, 2026).
   - `npm audit`: 0 vulnerabilities.
   - `pip-audit`: 0 vulnerabilities.
   - GitHub Actions CI workflow configured at `.github/workflows/ci.yml`.
@@ -55,8 +55,9 @@ The following steps must be completed manually by the project owner in external 
    - Create a new Web Service on Render connected to this repository.
    - Root directory: `backend`
    - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"`
    - Set `ENVIRONMENT=production`
+   - Set `GEMINI_MODEL=gemini-3.8-flash`
    - Set `FRONTEND_URL=https://your-custom-domain.com` (or your Vercel URL)
 
 3. **Deploy Frontend to Vercel**:

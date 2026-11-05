@@ -1,5 +1,11 @@
-Description:
-A local-first, distraction-free academic study utility powered by the Google Gemini API. Transforms raw lecture notes into 6-section academic summaries, generates active-recall multiple choice practice quizzes, polishes student draft answers, and explains complex concepts across learning depths.
+StudyMate AI - GitHub Repository Settings
+Date: November 5, 2026
 
-Topics:
-academic-study-assistant, gemini-api, fastapi, react, tailwindcss, vite, active-recall, study-tools, educational-technology, pydantic
+About Description (paste into GitHub "About" field):
+A local-first, distraction-free academic study utility powered by Google Gemini API. Transforms lecture notes into 6-section academic summaries, generates 4-option active recall practice quizzes, refines student draft answers, and explains complex concepts across learning depths.
+
+Website:
+https://studymate.ai
+
+Topics (paste into GitHub "Topics" field):
+academic-study-assistant, gemini-api, fastapi, react, tailwindcss, vite, active-recall, study-tools, educational-technology, pydantic, python3

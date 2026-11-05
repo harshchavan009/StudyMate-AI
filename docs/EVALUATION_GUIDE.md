@@ -15,7 +15,7 @@ sequenceDiagram
     participant Endpoint as FastAPI Route Handler
     participant Pydantic as Pydantic V2 Validation
     participant Prompt as Prompt Engine (prompts.py)
-    participant Gemini as Google Gemini API (1.5 Flash)
+    participant Gemini as Google Gemini API (Gemini 3.8 Flash)
 
     Student->>UI: Enters notes and clicks Generate
     UI->>UI: Client validation (empty check, min/max length, counter)
@@ -81,14 +81,14 @@ All prompt templates in `backend/app/prompts.py` adhere to a uniform, strict 5-p
 4. **Instructions**: Enforces strict grounding rules:
    - Forbids inventing facts, external assertions, or outside claims not present in the input.
    - Forbids conversational filler, preambles, and introductory pleasantries.
-   - Forbids em dashes (`—`), enforcing commas, colons, or parentheses.
+   - Forbids em dashes, enforcing commas, colons, or parentheses.
 5. **Output Format**: Enforces an exact, deterministic JSON schema matching the required UI sections.
 
 ---
 
 ## 3. Gemini Model Integration & Error Mapping
 
-The application integrates with the Google Gen AI SDK (`gemini-1.5-flash` by default). The runtime code operates in real AI mode only; runtime mock fallbacks have been removed.
+The application integrates with the Google Gen AI SDK (`gemini-3.8-flash` by default). The runtime code operates in real AI mode only; runtime mock fallbacks have been removed.
 
 ### Error Code Mapping
 
@@ -124,7 +124,7 @@ The application integrates with the Google Gen AI SDK (`gemini-1.5-flash` by def
 **Answer**: In `backend/app/services/gemini_service.py`, `generate_quiz` validates that the returned question count matches the requested count (5, 10, or 15), that every question has exactly 4 options, that `correct_index` is between 0 and 3, that explanations are non-empty, and that question stems are deduplicated. If validation fails, it retries up to twice before returning HTTP 502.
 
 ### Q7: Why does the app forbid em dashes?
-**Answer**: Many LLMs overuse em dashes (`—`), which clutters academic prose. StudyMate AI enforces standard academic punctuation (commas, colons, semicolons, and parentheses) through prompt instructions, regex sanitization in `gemini_service.py`, and automated unit test assertions.
+**Answer**: Many LLMs overuse em dashes, which clutters academic prose. StudyMate AI enforces standard academic punctuation (commas, colons, semicolons, and parentheses) through prompt instructions, regex sanitization in `gemini_service.py`, and automated unit test assertions.
 
 ### Q8: How is the application styled without Tailwind plugins or pre-built UI kits?
 **Answer**: StudyMate AI uses standard Tailwind CSS utility classes linked to CSS variables defined in `frontend/src/index.css`. The system uses strict color tokens (e.g., `#14161B` for dark sidebar, `#F2EFE8` for canvas) and avoids gradients, purple hues, or pill buttons.
@@ -133,13 +133,13 @@ The application integrates with the Google Gen AI SDK (`gemini-1.5-flash` by def
 **Answer**: StudyMate AI does not use a cloud database or track student accounts. Study texts are processed in memory by Gemini and returned directly. Study sets, quiz scores, and recent sessions are stored entirely in the user's browser using `localStorage`.
 
 ### Q10: How does the application handle rate limiting behind cloud reverse proxies (e.g., Render)?
-**Answer**: Render routes traffic through edge load balancers, attaching the client's actual IP to the `X-Forwarded-For` header. StudyMate AI's `get_client_ip` utility extracts the first IP from `X-Forwarded-For`, ensuring that rate limits apply per client IP rather than throttling the entire load balancer.
+**Answer**: Render routes traffic through edge load balancers, attaching the client's actual IP to the `X-Forwarded-For` header. StudyMate AI's `get_client_ip` utility extracts the right-most IP from `X-Forwarded-For` (appended by the trusted upstream proxy), ensuring that rate limits apply per real client IP while preventing malicious clients from injecting fake leading headers to bypass rate limits.
 
 ### Q11: How is accessibility (a11y) ensured?
 **Answer**: The app includes a "Skip to main content" link, accessible ARIA roles (`role="alert"`, `aria-label` attributes on controls), semantic HTML headings (`h1` through `h4`), keyboard shortcuts (`Cmd/Ctrl+K` for search, `Escape` to close drawers), and `reducedMotion="user"` support.
 
 ### Q12: How are unit and integration tests organized?
-**Answer**: The backend contains 30 automated Pytest tests across `test_api.py` and `test_prompts.py`. These cover health endpoints, central configuration limits, Pydantic 422 validations, whitespace-only rejections, 503/504/502 error mapping, prompt 5-part structures, rate limiting, and output schemas.
+**Answer**: The backend contains 38 automated Pytest tests across `test_api.py` and `test_prompts.py`. These cover health endpoints, central configuration limits, Pydantic 422 validations, whitespace-only rejections, 503/504/502 error mapping, prompt 5-part structures, rate limiting, and output schemas.
 
 ### Q13: How is the application configured across environments?
 **Answer**: Configuration is managed via Pydantic Settings in `backend/app/config.py`. Environment variables include `GEMINI_API_KEY`, `GEMINI_MODEL`, `FRONTEND_URL`, `ENVIRONMENT`, `HOST`, `PORT`, `RATE_LIMIT_DEFAULT`, and `RATE_LIMIT_AI_ENDPOINTS`.
@@ -148,5 +148,5 @@ The application integrates with the Google Gen AI SDK (`gemini-1.5-flash` by def
 **Answer**: `frontend/src/lib/api.js` checks `navigator.onLine` before making HTTP calls and raises a descriptive `ApiError` if the client is offline. The top navigation bar includes an active backend health monitor, and input textareas preserve content if a network interruption occurs.
 
 ### Q15: What automated CI/CD safeguards exist?
-**Answer**: The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that triggers on all pushes and pull requests to `main`. It runs the full 30-test Pytest suite, executes backend smoke tests, verifies frontend builds, and performs `npm audit`.
+**Answer**: The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that triggers on all pushes and pull requests to `main`. It runs the full 38-test Pytest suite, executes backend smoke tests, verifies frontend builds, and performs `npm audit`.
 

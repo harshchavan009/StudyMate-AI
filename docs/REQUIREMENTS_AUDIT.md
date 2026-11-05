@@ -10,7 +10,7 @@ Comprehensive audit matrix documenting the fulfillment of all essential features
 | :--- | :--- | :---: | :--- | :--- |
 | **Essential Feature 1** | Clean, responsive user interface | **PASS** | Captured browser evidence across 390px, 768px, and 1440px viewports (`part5_responsive_*.png`). No purple, no gradients, no pill buttons, no emoji. | Strict token styling in `frontend/src/index.css` and `Sidebar.jsx`. |
 | **Essential Feature 2** | User input area | **PASS** | Character bounded textareas with real-time tabular counters (`FieldCounter.jsx`), helper text, and outline Clear buttons. | Standardized counter across all 4 tool pages. |
-| **Essential Feature 3** | Real LLM integration | **PASS** | `gemini_service.py` connects to Gemini API with zero runtime mock fallbacks. Returns HTTP 503 if key is unset in all environments. 35 passing Pytest tests. | Removed runtime mock fallbacks. Verified via `test_missing_api_key_returns_503_on_all_endpoints`. |
+| **Essential Feature 3** | Real LLM integration | **PASS** | `gemini_service.py` connects to Gemini API with zero runtime mock fallbacks. Returns HTTP 503 if key is unset in all environments. 38 passing Pytest tests. | Removed runtime mock fallbacks. Verified via `test_missing_api_key_returns_503_on_all_endpoints`. |
 | **Essential Feature 4** | Structured prompt engineering | **PASS** | Explicit 5-part architecture (Role, Task, Context, Instructions, Output Format) with safety delimiters (`=== STUDENT INPUT START ===`). | Implemented in `backend/app/prompts.py` and verified by `tests/test_prompts.py`. |
 | **Essential Feature 5** | Formatted output display | **PASS** | Source Serif 4 headings, numbered key concept tags, diff highlighters, interactive quiz runner, and Markdown copy. | Verified in `ResultPanel.jsx` and browser captures. |
 | **Essential Feature 6** | Input validation (empty, invalid, too long) | **PASS** | Pydantic v2 schemas reject whitespace-only text, invalid question counts, and out-of-bound lengths with HTTP 422. | Added validators in `backend/app/schemas.py`. Verified by 6 automated validation tests. |
@@ -28,18 +28,18 @@ Comprehensive audit matrix documenting the fulfillment of all essential features
 | **API 6** | `GET /api/config` | **PASS** | Active route exposing central source of truth for input lengths and choices. | Verified in `backend/scripts/smoke.sh` and `test_api.py`. |
 | **Extra Functionality** | Copy results, clear, regenerate, loading indicators | **PASS** | Single-click Markdown copy with checkmark confirmation, clear action, retry buttons, and 3-stage animated pipeline. | Verified via live browser interaction test script. |
 | **Submission 1** | Working website | **PASS** | Full stack application verified locally on ports 5173 and 8000. Clean Vite build (1.55s). | Verified via `npm run build` and live CDP browser sessions. |
-| **Submission 2** | Real LLM API | **PASS** | Google Gen AI SDK integration with validated `GEMINI_MODEL` (`gemini-1.5-flash`). Zero mock fallbacks in runtime code. | Startup validation in `backend/app/config.py` and `gemini_service.py`. |
+| **Submission 2** | Real LLM API | **PASS** | Google Gen AI SDK integration with validated `GEMINI_MODEL` (`gemini-3.8-flash`). Zero mock fallbacks in runtime code. | Startup validation in `backend/app/config.py` and `gemini_service.py`. |
 | **Submission 3** | Structured prompts | **PASS** | Role, Task, Context, Instructions, Output Format structure with safety fences in `prompts.py`. | Unit tested in `backend/tests/test_prompts.py`. |
-| **Submission 4** | Validation and error handling | **PASS** | Pydantic v2 validation, standard JSON envelope, and error mapping for 422, 429, 502, 503, 504, 500. | 35 passing Pytest tests. |
+| **Submission 4** | Validation and error handling | **PASS** | Pydantic v2 validation, standard JSON envelope, and error mapping for 422, 429, 502, 503, 504, 500. | 38 passing Pytest tests. |
 | **Submission 5** | Source code & GitHub repository | **PASS** | Structured Git repository with granular commits per requirement item. | Synced with GitHub remote `origin/main`. |
-| **Submission 6** | Comprehensive documentation | **PASS** | 20-section `README.md`, `docs/DESIGN.md`, `SECURITY_AUDIT.md`, `LAUNCH.md`. | Verified all 20 sections and reconciled 35 test counts. |
+| **Submission 6** | Comprehensive documentation | **PASS** | 20-section `README.md`, `docs/DESIGN.md`, `SECURITY_AUDIT.md`, `LAUNCH.md`. | Verified all 20 sections and reconciled 38 test counts. |
 | **Submission 7** | Working demonstration & evaluation guide | **PASS** | `DEMO.md` with 3-minute presentation script and Render/Vercel deployment guides; `docs/EVALUATION_GUIDE.md` with 15 Q&As. | Fully created and verified. |
 
 ---
 
 ## Verification Summary
 
-1. **Automated Pytest Suite**: 35 passed in 0.12s (`pytest -v`).
+1. **Automated Pytest Suite**: 38 passed in 0.31s (`pytest -v`).
 2. **Smoke Test Script**: 11 passed in `bash backend/scripts/smoke.sh`.
 3. **Frontend Production Build**: `npm run build` succeeded in 1.55s with 0 errors.
 4. **Security Vulnerability Audits**:

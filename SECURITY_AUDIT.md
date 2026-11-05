@@ -8,7 +8,7 @@ Scope: Frontend client application, FastAPI backend, Gemini API integration, and
 
 ## Executive Summary
 
-StudyMate AI was subjected to a comprehensive security review and verification audit. The application architecture has no persistent database and no user accounts; all processing occurs in memory per request. The review verified proxy header forwarding behind Render reverse proxies, verified per-IP rate limiting across `X-Forwarded-For` headers, confirmed exact Content-Security-Policy rules, confirmed 0 vulnerabilities across both `npm audit` and `pip-audit`, and confirmed zero secrets in Git commit history.
+StudyMate AI was subjected to a comprehensive security review and verification audit. The application architecture has no persistent database and no user accounts; all processing occurs in memory per request. The review verified proxy header forwarding behind Render reverse proxies, verified per-IP rate limiting across `X-Forwarded-For` headers with right-most IP extraction, confirmed exact Content-Security-Policy rules, confirmed 0 vulnerabilities across both `npm audit` and `pip-audit`, confirmed zero secrets in Git commit history, and verified all 38 automated Pytest test cases passing on November 5, 2026.
 
 ---
 
@@ -22,7 +22,7 @@ StudyMate AI was subjected to a comprehensive security review and verification a
 ### 2. Environment Variables & Startup Validation
 - **Status**: Passed
 - **Checked**: `.gitignore`, `backend/app/config.py`, `backend/app/main.py`, and `.env.example` templates.
-- **Findings**: Both root and backend `.gitignore` files strictly ignore `.env` files. Both `backend/.env.example` and `frontend/.env.example` provide placeholder values only. Startup lifespan hooks validate environment configurations on boot. If `GEMINI_API_KEY` is unset, the service responds with HTTP 503 ("The AI service is not configured or unavailable") rather than crashing or running hidden mock fallbacks. Configured `GEMINI_MODEL` is validated against supported Google Gen AI models (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`, etc.).
+- **Findings**: Both root and backend `.gitignore` files strictly ignore `.env` files. Both `backend/.env.example` and `frontend/.env.example` provide placeholder values only. Startup lifespan hooks validate environment configurations on boot. If `GEMINI_API_KEY` is unset, the service responds with HTTP 503 ("The AI service is not configured or unavailable") rather than crashing or running hidden mock fallbacks. Active model defaults to `gemini-3.8-flash` (stable Flash model with no announced shutdown date); startup hooks verify with the Gemini API that the model exists.
 
 ### 3. Secrets in Git History
 - **Status**: Passed
@@ -46,10 +46,10 @@ StudyMate AI was subjected to a comprehensive security review and verification a
 
 ### 6. Rate Limiting and Proxy Header Forwarding
 - **Status**: Passed
-- **Checked**: SlowAPI rate limiter configuration in `backend/app/api/rate_limit.py`, Render start command in `backend/render.yaml`, and automated test `test_rate_limiting_tracks_x_forwarded_for_headers`.
+- **Checked**: SlowAPI rate limiter configuration in `backend/app/api/rate_limit.py`, Render start command in `backend/render.yaml`, and automated tests `test_rate_limiting_tracks_x_forwarded_for_headers` and `test_fake_leading_x_forwarded_for_cannot_bypass_rate_limit`.
 - **Command in render.yaml**:
   `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"`
-- **Findings**: IP-based rate limiting is enforced on all API routes (`15/minute` on AI generation endpoints, `30/minute` globally). Client IP resolution extracts the real client IP from `X-Forwarded-For` headers behind reverse proxies. Automated tests verify that different client IPs have independent rate limit quotas. Exceeding limits returns a standard HTTP 429 JSON response.
+- **Findings**: IP-based rate limiting is enforced on all API routes (`15/minute` on AI generation endpoints, `30/minute` globally). Client IP resolution extracts the right-most entry from `X-Forwarded-For` headers appended by the trusted reverse proxy, preventing spoofed leading headers from bypassing rate limits. Automated tests verify that different client IPs have independent rate limit quotas and that spoofed leading headers are ignored. Exceeding limits returns a standard HTTP 429 JSON response.
 
 ### 7. Cross-Origin Resource Sharing (CORS) Lockdown
 - **Status**: Passed
