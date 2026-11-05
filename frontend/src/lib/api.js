@@ -66,30 +66,56 @@ async function request(endpoint, options = {}) {
     const data = isJson ? await response.json() : null;
 
     if (!response.ok) {
+      const serverMessage = data?.error?.message || data?.detail;
+
       if (response.status === 429) {
         throw new ApiError(
-          data?.detail || "Rate limit reached. Please wait a minute before submitting again.",
+          serverMessage || "Rate limit reached. Please wait a minute before submitting again.",
           429,
           data
         );
       }
       if (response.status === 422) {
-        const fieldErrors = data?.errors?.map((e) => e.message).join(", ");
+        const fieldErrors = data?.error?.details
+          ? data.error.details.map((e) => e.message).join(", ")
+          : data?.errors?.map((e) => e.message).join(", ");
         throw new ApiError(
-          fieldErrors || data?.detail || "Invalid input submitted.",
+          fieldErrors || serverMessage || "Invalid input submitted.",
           422,
+          data
+        );
+      }
+      if (response.status === 503) {
+        throw new ApiError(
+          serverMessage || "The AI service is not configured or unavailable.",
+          503,
+          data
+        );
+      }
+      if (response.status === 504) {
+        throw new ApiError(
+          serverMessage || "Upstream AI service timed out. Please try again.",
+          504,
+          data,
+          true
+        );
+      }
+      if (response.status === 502) {
+        throw new ApiError(
+          serverMessage || "Invalid response received from AI model. Please retry.",
+          502,
           data
         );
       }
       if (response.status >= 500) {
         throw new ApiError(
-          "The AI model server encountered a temporary error. Please retry.",
+          serverMessage || "The AI model server encountered a temporary error. Please retry.",
           response.status,
           data
         );
       }
       throw new ApiError(
-        data?.detail || `Request failed with status ${response.status}`,
+        serverMessage || `Request failed with status ${response.status}`,
         response.status,
         data
       );
