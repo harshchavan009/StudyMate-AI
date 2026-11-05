@@ -2,7 +2,7 @@
 
 StudyMate AI turns unorganized notes, lectures, and draft responses into structured summaries, active recall quizzes, phrase-level answer improvements, and multi-level concept breakdowns.
 
-Powered by Google's Gemini API, FastAPI, React 18, and Tailwind CSS. Built to strictly comply with academic utility standards: zero fake data, no intrusive gradients, no purple hues, no emoji icons, and zero em dashes.
+Powered by Google's Gemini API, FastAPI, React 18, and Tailwind CSS. Built with an editorial aesthetic for focused academic revision and structured retention.
 
 ---
 
@@ -14,30 +14,53 @@ StudyMate AI is designed to combat passive studying and information overload. Co
 - Factual-preserving answer revisions with redline phrase comparisons.
 - Multi-depth conceptual explanations tailored from beginner analogies to graduate rigor.
 
+For technical evaluators and reviewers, see the complete [Evaluation Guide](docs/EVALUATION_GUIDE.md) and [Requirements Audit](docs/REQUIREMENTS_AUDIT.md).
+
 ---
 
-## 2. Key Features & Architecture
+## 2. Key Features
 
 - **Notes Summarizer**: Breaks down complex notes into 6 standardized sections: Topic Overview, Key Concepts, Important Definitions, Important Points, Exam Preparation Notes, and Quick Revision Summary.
 - **Practice Quiz Generator**: Creates 5, 10, or 15 multiple-choice questions with 4 options per question, instant explanation feedback, and an interactive Flashcard review mode.
 - **Answer Improver**: Enhances grammar, clarity, and academic tone while strictly retaining original student facts without inventing claims.
 - **Concept Explainer**: Explains mechanisms across Beginner, Intermediate, and Advanced learning depths.
 - **Shared Multi-Tool Study Sets**: Groups summaries, practice quizzes, and concept notes under unified collections in client storage.
-- **Real Backend Health & Metrics**: Live 3-state health indicator in top bar (`checking`, `online`, `unreachable`).
+- **System Health & Config Status**: Live 3-state connection badge in top bar (checking, online, unreachable) and dynamic config synchronization.
 
 ---
 
-## 3. Architecture Diagram
+## 3. Real Application Screenshots
+
+### Academic Notes Summarizer
+![Academic Notes Summarizer](docs/screenshots/summarizer.png)
+
+### Active Recall Practice Quiz
+![Active Recall Practice Quiz](docs/screenshots/quiz.png)
+
+### Factual Answer Improver
+![Answer Improver Analysis](docs/screenshots/improver.png)
+
+### Multi-Depth Concept Explainer
+![Concept Explainer Breakdown](docs/screenshots/explainer.png)
+
+### Responsive Viewports (Desktop & Mobile Drawer)
+| Desktop Viewport (1440px) | Mobile Navigation Drawer (390px) |
+| :---: | :---: |
+| ![Desktop Viewport](docs/screenshots/responsive_desktop.png) | ![Mobile Navigation Drawer](docs/screenshots/responsive_mobile.png) |
+
+---
+
+## 4. Architecture Diagram
 
 ```mermaid
 graph TD
     Client["React 18 SPA (Vite + Tailwind CSS)"]
     Proxy["Reverse Proxy / Edge Gateway (Render/Vercel)"]
-    FastAPI["FastAPI ASGI Server (Python 3.11+)"]
-    Limiter["SlowAPI Rate Limiter (IP via X-Forwarded-For)"]
+    FastAPI["FastAPI ASGI Server (Python 3.12+)"]
+    Limiter["SlowAPI Rate Limiter (Right-Most X-Forwarded-For IP)"]
     Pydantic["Pydantic v2 Validation Engine"]
     Prompts["5-Part Prompt Engine (prompts.py)"]
-    Gemini["Google Gemini API (1.5 Flash)"]
+    Gemini["Google Gemini API (Gemini 3.8 Flash)"]
     BrowserStorage["Browser localStorage (Zero Server DB)"]
 
     Client -->|HTTP / JSON Requests| Proxy
@@ -53,7 +76,7 @@ graph TD
 
 ---
 
-## 4. Workflow: Input to Processing to Output
+## 5. Workflow: Input to Processing to Output
 
 1. **Input Phase**: The student enters or pastes study text into a character-bounded textarea. Dynamic character counters provide tabular real-time feedback.
 2. **Client Validation**: The UI verifies minimum character lengths (e.g. 20 chars for Summarizer) and disables submission with explanatory messages if constraints are violated.
@@ -64,7 +87,7 @@ graph TD
 
 ---
 
-## 5. Prompt Engineering Approach & Anti-Hallucination Guardrails
+## 6. Prompt Engineering Approach & Anti-Hallucination Guardrails
 
 All prompt templates in `backend/app/prompts.py` enforce a strict 5-part structure:
 1. **Role**: Establishes the authoritative academic persona.
@@ -78,15 +101,24 @@ All prompt templates in `backend/app/prompts.py` enforce a strict 5-part structu
 
 ---
 
-## 6. Real AI Integration Details
+## 7. Real AI Integration Details
 
-- **Official Model**: Configured through `GEMINI_MODEL` (default: `gemini-1.5-flash`). Supported models: `gemini-1.5-flash`, `gemini-1.5-flash-8b`, `gemini-1.5-pro`, `gemini-2.0-flash`.
-- **Startup Model Validation**: The backend validates `GEMINI_MODEL` against supported Google Gen AI models on boot, failing fast if an unverified model is requested.
+- **Official Model**: Configured through `GEMINI_MODEL` (default: `gemini-3.8-flash`). `gemini-3.8-flash` is Google's current stable Flash model with no announced shutdown date.
+- **Startup Model Verification**: On application boot, FastAPI verifies with the Google Gen AI API whether the configured `GEMINI_MODEL` exists and is accessible. If the model is retired or not accepted by Google, startup aborts immediately with a clear error message.
 - **Strict Real AI Enforcement**: All runtime mock fallbacks have been removed. If `GEMINI_API_KEY` is unconfigured or rejected, endpoints return a clean HTTP 503 error. Mocks exist strictly within isolated Pytest fixtures.
+
+### How to Change GEMINI_MODEL When Google Retires a Model
+Google announces API model deprecations on [Google AI for Developers](https://ai.google.dev/gemini-api/docs/models). When migrating to a newer model:
+1. Open `backend/.env` (or environment settings in your hosting dashboard).
+2. Update the model identifier:
+   ```bash
+   GEMINI_MODEL=gemini-3.8-flash
+   ```
+3. Restart the backend service. The application startup hook will query the Gemini API to confirm the new model is accepted before serving traffic. No application code changes are required.
 
 ---
 
-## 7. API Reference
+## 8. API Reference
 
 ### Core Endpoints
 
@@ -102,7 +134,7 @@ All prompt templates in `backend/app/prompts.py` enforce a strict 5-part structu
 
 ---
 
-## 8. Input Validation & Sanitization
+## 9. Input Validation & Sanitization
 
 All input models inherit from `BaseValidatedModel` with `str_strip_whitespace=True` and `extra="forbid"`.
 - **Notes Summarizer**: 20 to 10,000 characters. Rejects whitespace-only text with HTTP 422.
@@ -112,7 +144,7 @@ All input models inherit from `BaseValidatedModel` with `str_strip_whitespace=Tr
 
 ---
 
-## 9. Error Handling Strategy & Standard Envelope
+## 10. Error Handling Strategy & Standard Envelope
 
 All errors adhere to a standardized, predictable JSON envelope:
 ```json
@@ -137,7 +169,18 @@ All errors adhere to a standardized, predictable JSON envelope:
 
 ---
 
-## 10. Local Storage & Privacy Model
+## 11. Security Considerations
+
+A full security review is documented in [SECURITY_AUDIT.md](SECURITY_AUDIT.md). Key security controls include:
+- **API Key Isolation**: `GEMINI_API_KEY` is strictly held on the server and never exposed to the client or browser bundles.
+- **Proxy Header Rate Limiting**: SlowAPI rate limiting extracts the right-most IP address from `X-Forwarded-For` (appended by the trusted proxy), preventing spoofed leading headers from bypassing rate limits.
+- **Zero Cloud Databases**: Student lecture texts and answers are processed entirely in memory per request. Study sets and history remain exclusively in browser `localStorage`.
+- **Content Security Policy**: Exact CSP headers are enforced on both FastAPI middleware and frontend production hosting (`frame-ancestors 'none'`, `object-src 'none'`).
+- **Dependency Auditing**: 0 vulnerabilities confirmed across both `npm audit` and `pip-audit`.
+
+---
+
+## 12. Local Storage & Privacy Model
 
 - **Privacy Statement**: "Your text is sent to Google's Gemini API to generate results. StudyMate AI does not store it on a server. History and study sets stay in this browser."
 - **Zero Cloud Databases**: StudyMate AI does not operate a database or require user authentication.
@@ -145,7 +188,7 @@ All errors adhere to a standardized, predictable JSON envelope:
 
 ---
 
-## 11. Design System & Typography Tokens
+## 13. Design System & Typography Tokens
 
 - **Sidebar Background**: `#14161B` (fixed 248px desktop width, 3px active indicator bar).
 - **Canvas Background**: `#F2EFE8` (warm editorial parchment).
@@ -156,23 +199,83 @@ All errors adhere to a standardized, predictable JSON envelope:
 
 ---
 
-## 12. Tech Stack & Dependencies
+## 14. Project Directory Tree
 
-- **Frontend**: React 18, Vite 6, Tailwind CSS 3.4, Motion 12, Lucide Icons, Canvas Confetti.
+```
+StudyMate-AI/
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions CI workflow (Pytest + Vite Build)
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── endpoints.py     # Core FastAPI route handlers
+│   │   │   └── rate_limit.py    # SlowAPI rate limiter with proxy IP extraction
+│   │   ├── services/
+│   │   │   └── gemini_service.py # Gemini SDK integration, retry, parsing
+│   │   ├── config.py            # Pydantic BaseSettings and model configuration
+│   │   ├── main.py              # Application entry, lifespan, CORS, error envelope
+│   │   ├── prompts.py           # 5-part prompt templates with safety delimiters
+│   │   └── schemas.py           # Pydantic v2 request/response schemas
+│   ├── scripts/
+│   │   └── smoke.sh             # Live endpoint smoke test script
+│   ├── tests/
+│   │   ├── test_api.py          # API, validation, error mapping, and rate limit tests
+│   │   └── test_prompts.py      # Prompt structure unit tests
+│   ├── .env.example             # Backend environment template
+│   ├── render.yaml              # Render deployment blueprint
+│   └── requirements.txt         # Pinned Python dependencies
+├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg          # Vector favicon monogram
+│   │   ├── favicon.png          # Raster 32x32 favicon
+│   │   ├── apple-touch-icon.png # 180x180 iOS touch icon
+│   │   ├── og-image.png         # 1200x630 Open Graph preview
+│   │   └── robots.txt           # Search engine directives
+│   ├── src/
+│   │   ├── components/          # Reusable UI components (ResultPanel, Sidebar, etc.)
+│   │   ├── data/                # Presets, FAQs, and stored real sample responses
+│   │   ├── hooks/               # Custom hooks (usePageMeta, useCountUp, etc.)
+│   │   ├── lib/                 # Client API layer, storage utilities
+│   │   ├── pages/               # Route views (Home, Summarizer, Quiz, Improver, etc.)
+│   │   ├── App.jsx              # Main routing and command palette setup
+│   │   ├── index.css            # CSS variable tokens and base typography
+│   │   └── main.jsx             # React DOM root mounting
+│   ├── package.json             # NPM dependencies
+│   ├── tailwind.config.js       # Tailwind theme token mapping
+│   ├── vercel.json              # Vercel SPA routing and security headers
+│   └── vite.config.js           # Vite build configuration
+├── docs/
+│   ├── screenshots/             # Real application viewport captures
+│   ├── DESIGN.md                # Design system specification and color tokens
+│   ├── EVALUATION_GUIDE.md      # 15 technical evaluator questions and answers
+│   ├── GITHUB_ABOUT.txt         # Repository About description and topics
+│   └── REQUIREMENTS_AUDIT.md    # Complete requirements compliance matrix
+├── DEMO.md                      # 3-minute video presentation script and deployment
+├── LAUNCH.md                    # Production release checklist
+├── README.md                    # Project documentation
+└── SECURITY_AUDIT.md            # Security audit report
+```
+
+---
+
+## 15. Tech Stack & Dependencies
+
+- **Frontend**: React 18, Vite 6, Tailwind CSS 3.4, Motion 12, Lucide Icons.
 - **Backend**: FastAPI 0.115, Uvicorn, SlowAPI, Pydantic v2, Google GenAI SDK.
 - **Testing & Quality**: Pytest 9, Pytest-Asyncio, HTTPX, pip-audit, npm audit.
 
 ---
 
-## 13. Prerequisites
+## 16. Prerequisites
 
-- Python 3.10+ (tested through Python 3.14)
+- Python 3.12+ (tested through Python 3.14)
 - Node.js 18+ (tested on Node.js 20 LTS)
 - Google Gemini API Key (from [Google AI Studio](https://aistudio.google.com))
 
 ---
 
-## 14. Installation & Setup
+## 17. Installation & Setup
 
 ### 1. Clone the repository
 ```bash
@@ -199,13 +302,13 @@ cp .env.example .env
 
 ---
 
-## 15. Environment Variables Reference
+## 18. Environment Variables Reference
 
 ### Backend (`backend/.env`)
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `GEMINI_API_KEY` | `""` | Google Gemini API key (Required for AI generation) |
-| `GEMINI_MODEL` | `gemini-1.5-flash` | Configured Gemini model name |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Configured Gemini model name |
 | `FRONTEND_URL` | `http://localhost:5173` | Allowed CORS origin (no wildcards in production) |
 | `ENVIRONMENT` | `development` | Set to `production` for strict CORS and disabled docs |
 | `RATE_LIMIT_DEFAULT` | `30/minute` | Global endpoint rate limit |
@@ -218,7 +321,7 @@ cp .env.example .env
 
 ---
 
-## 16. Running the Application Locally
+## 19. Running the Application Locally
 
 In two separate terminal sessions:
 
@@ -237,9 +340,9 @@ Open your browser to `http://localhost:5173`.
 
 ---
 
-## 17. Running the Automated Test Suite
+## 20. Running the Automated Test Suite
 
-The test suite contains 35 passing automated tests covering all features, prompts, rate limiting, and failure modes.
+The test suite contains 38 passing automated tests covering all features, prompts, rate limiting, and failure modes (verified November 5, 2026).
 
 ```bash
 cd backend
@@ -249,11 +352,11 @@ pytest -v
 
 ### Test Suite Structure
 - `backend/tests/test_prompts.py`: Verifies 5-part structure, safety delimiters, and anti-hallucination guardrails across all 4 prompt builders.
-- `backend/tests/test_api.py`: Tests 422 validations, whitespace-only rejections, 503 missing key handling, 429 quota exhaustion, 504 timeouts, 502 malformed retries, quiz question count validation and deduplication, security headers, central config, and rate limiting with `X-Forwarded-For`.
+- `backend/tests/test_api.py`: Tests 422 validations, whitespace-only rejections, 503 missing key handling, 429 quota exhaustion, 504 timeouts, 502 malformed retries, quiz question count validation and deduplication, startup model verification, security headers, central config, and rate limiting with right-most `X-Forwarded-For` IP extraction.
 
 ---
 
-## 18. Smoke Testing Script Execution
+## 21. Smoke Testing Script Execution
 
 A dedicated smoke test script validates all live endpoints against a running backend server:
 
@@ -264,7 +367,24 @@ bash backend/scripts/smoke.sh
 
 ---
 
-## 19. Production Deployment Guide
+## 22. Known Limitations
+
+- **Gemini API Connectivity**: Requires an active internet connection to Google Gemini API servers. When offline or unconfigured, endpoints return HTTP 503 with user input preserved.
+- **Client Storage Capacity**: Saved sessions and study sets rely on browser `localStorage` (~5MB limit). Clearing browser data resets local history.
+- **Input Character Bounds**: Lecture inputs are capped at 10,000 characters to ensure predictable latency and prevent token budget exhaustion.
+
+---
+
+## 23. Future Enhancements
+
+- **Document Ingestion**: Support for multi-page PDF notes and slide deck text extraction.
+- **Spaced Repetition Algorithm**: Implementation of SM-2 spaced repetition for flashcards and quiz review scheduling.
+- **Audio Lecture Transcription**: Integration with speech-to-text models for recorded lectures.
+- **Anki Deck Export**: Direct export of quiz question sets into `.apkg` format for mobile revision.
+
+---
+
+## 24. Production Deployment Guide
 
 Detailed deployment walkthroughs for Render and Vercel are available in [DEMO.md](DEMO.md).
 
@@ -274,7 +394,7 @@ Detailed deployment walkthroughs for Render and Vercel are available in [DEMO.md
 
 ---
 
-## 20. License & Academic Integrity Notice
+## 25. License & Academic Integrity Notice
 
 StudyMate AI is designed as an educational revision aid. It is intended to help students synthesize lecture material, test recall, and polish their own original phrasing. It is not intended to complete assignments or generate ungrounded claims.
 
