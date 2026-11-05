@@ -1,18 +1,36 @@
 """Prompt templates for StudyMate AI.
 
-Enforces strict JSON schemas matching exact specification requirements.
-No em dashes are permitted anywhere in instructions or fallback output.
+Enforces strict 5-part structure per feature:
+1. Role
+2. Task
+3. Context (student's input)
+4. Instructions (anti-hallucination guardrails, forbidden outside facts, no em dashes)
+5. Output Format (strict JSON schema matching specification)
+
+No em dashes are permitted anywhere in instructions, templates, or outputs.
 """
 
+from typing import Optional, Dict, Any
+
+
 # ---------------------------------------------------------
-# 1. Summarizer Prompts
+# 1. Summarizer Prompt Template
 # ---------------------------------------------------------
 
-SUMMARIZER_SYSTEM_PROMPT = """You are an expert academic tutor and study assistant.
-Your task is to analyze study notes or textbook excerpts and return a structured 6-section academic summary.
+SUMMARIZER_ROLE = "You are an expert academic tutor and study assistant."
 
-You MUST respond strictly with valid JSON conforming to the following shape:
-{
+SUMMARIZER_TASK = (
+    "Analyze the student provided study notes or textbook excerpt and produce a "
+    "structured 6-section academic summary."
+)
+
+SUMMARIZER_INSTRUCTIONS = """1. Work strictly with the information provided in Context. Do not invent facts, outside claims, or external assertions that are not present in the input text.
+2. Ground all 6 sections entirely in the student text.
+3. Be direct, authoritative, and concise. Avoid conversational filler or introductory greetings.
+4. Do not use em dashes anywhere in your output. Use commas, colons, or parentheses instead.
+5. Output strictly raw JSON conforming exactly to the Output Format schema below. Do not wrap in markdown code fences or backticks."""
+
+SUMMARIZER_OUTPUT_FORMAT = """{
   "topic_overview": "A clear, concise overview summarizing the primary topic and central theme.",
   "key_concepts": [
     "Key concept 1 with concise explanation",
@@ -21,7 +39,7 @@ You MUST respond strictly with valid JSON conforming to the following shape:
   "important_definitions": [
     {
       "term": "Academic or Technical Term",
-      "definition": "Precise, unambiguous definition."
+      "definition": "Precise, unambiguous definition grounded in source text."
     }
   ],
   "important_points": [
@@ -29,43 +47,48 @@ You MUST respond strictly with valid JSON conforming to the following shape:
     "High-priority factual point 2"
   ],
   "exam_preparation_notes": [
-    "Specific exam-relevant tip, common mistake to avoid, or key formula 1",
+    "Specific exam-relevant tip, key distinction, or common pitfall to avoid",
     "Exam preparation note 2"
   ],
-  "quick_revision_summary": "A concise bullet-point or short paragraph summary designed for fast review before an exam."
-}
+  "quick_revision_summary": "A concise paragraph summary designed for fast review before an exam."
+}"""
 
-Guidelines:
-1. Do not use em dashes anywhere in your output. Use commas, colons, or parentheses.
-2. Ground all points in the provided source material.
-3. Be direct, authoritative, and concise. Avoid conversational filler.
-4. Output strictly raw JSON, with no markdown code fences or backticks.
-"""
+def build_summarizer_prompt(text: str) -> str:
+    """Build complete 5-part prompt for the Notes Summarizer."""
+    return f"""Role: {SUMMARIZER_ROLE}
 
-def build_summarizer_user_prompt(text: str) -> str:
-    return f"""Please analyze the following academic text and produce a structured 6-section summary:
+Task: {SUMMARIZER_TASK}
 
-=== SOURCE TEXT START ===
+Context:
+=== STUDENT INPUT START ===
 {text}
-=== SOURCE TEXT END ===
+=== STUDENT INPUT END ===
+
+Instructions:
+{SUMMARIZER_INSTRUCTIONS}
+
+Output Format:
+{SUMMARIZER_OUTPUT_FORMAT}
 
 Return raw JSON only."""
 
 
 # ---------------------------------------------------------
-# 2. Quiz Generator Prompts
+# 2. Quiz Generator Prompt Template
 # ---------------------------------------------------------
 
-QUIZ_SYSTEM_PROMPT = """You are a rigorous academic examiner.
-Your task is to generate high-quality multiple choice questions testing comprehension, application, and critical thinking based on the provided material.
+QUIZ_ROLE = "You are a rigorous academic examiner and question designer."
 
-Difficulty adjustment:
-- Easy: Direct recall of foundational facts and definitions, with distinct distractors.
-- Medium: Conceptual understanding, cause-and-effect relationships, and plausible distractors.
-- Hard: Deep analysis, subtle distinctions, and multi-step reasoning.
+QUIZ_INSTRUCTIONS = """1. Ground all question stems and options strictly in the information provided in Context. Do not introduce outside facts or untestable assertions.
+2. Every question must have exactly 4 plausible options, with exactly one unambiguously correct answer.
+3. The correct_index must be an integer between 0 and 3, corresponding to the correct option.
+4. Distractors must be plausible academic alternatives based on the context, not obvious absurdities.
+5. Do not create duplicate or repetitive questions.
+6. Explanations must be non-empty and clearly explain why the correct option is right and why distractors are wrong.
+7. Do not use em dashes in question stems, options, or explanations. Use commas, colons, or parentheses.
+8. Output strictly raw JSON conforming exactly to the Output Format schema below. Do not wrap in markdown code fences or backticks."""
 
-You MUST respond strictly with valid JSON conforming to the following shape:
-{
+QUIZ_OUTPUT_FORMAT = """{
   "difficulty": "easy | medium | hard",
   "question_count": 5,
   "questions": [
@@ -79,53 +102,54 @@ You MUST respond strictly with valid JSON conforming to the following shape:
         "Fourth option"
       ],
       "correct_index": 0,
-      "explanation": "Detailed explanation stating why the correct option is right and why other options are incorrect."
+      "explanation": "Detailed explanation stating why the correct option is right and why others are incorrect."
     }
   ]
-}
+}"""
 
-Guidelines:
-1. Every question must have exactly 4 options.
-2. correct_index must be an integer between 0 and 3.
-3. Do not use em dashes in question stems, options, or explanations.
-4. Distractors must be plausible academic answers, not obvious absurdities.
-5. Output strictly raw JSON, with no markdown code fences or backticks.
-"""
+def build_quiz_prompt(text: str, difficulty: str, count: int, focus: Optional[str] = None) -> str:
+    """Build complete 5-part prompt for the Practice Quiz Generator."""
+    task = f"Generate exactly {count} multiple choice questions at difficulty level '{difficulty}' from the student material."
+    focus_clause = f"\nFocus constraint: Prioritize questions testing '{focus.strip()}', but remain grounded strictly in the source text." if focus and focus.strip() else ""
 
-def build_quiz_user_prompt(text: str, difficulty: str, count: int, focus: Optional[str] = None) -> str:
-    focus_clause = ""
-    if focus and focus.strip():
-        focus_clause = (
-            f"\nFOCUS CONSTRAINT: Concentrate questions specifically on '{focus.strip()}'. "
-            "All questions must strictly remain grounded within the source material; do not introduce outside assertions.\n"
-        )
-    return f"""Generate exactly {count} multiple choice questions at difficulty level '{difficulty}' from the text below:{focus_clause}
+    return f"""Role: {QUIZ_ROLE}
 
-=== SOURCE MATERIAL START ===
-{text}
-=== SOURCE MATERIAL END ===
+Task: {task}
+
+Context:
+=== STUDENT INPUT START ===
+{text}{focus_clause}
+=== STUDENT INPUT END ===
+
+Instructions:
+{QUIZ_INSTRUCTIONS}
+
+Output Format:
+{QUIZ_OUTPUT_FORMAT}
 
 Return raw JSON only."""
 
 
 # ---------------------------------------------------------
-# 3. Answer Improver Prompts
+# 3. Answer Improver Prompt Template
 # ---------------------------------------------------------
 
-IMPROVER_SYSTEM_PROMPT = """You are an academic writing and clarity editor.
-Your task is to take a student draft answer and provide actionable feedback, an improved revision, and concrete suggestions for further refinement.
+IMPROVER_ROLE = "You are an academic writing mentor and precision editor."
 
-CRITICAL RULES:
-1. DO NOT add facts, external claims, or new evidence that are NOT present in the student answer.
-2. Work strictly with the information, reasoning, and arguments the student provided.
-3. Focus on clarity, academic tone, sentence structure, flow, and conciseness.
-4. Do not evaluate factual completeness or grade missing outside knowledge.
-5. Do not use em dashes anywhere in your text. Use commas, colons, or periods.
+IMPROVER_TASK = (
+    "Analyze the student draft answer and provide constructive feedback, an improved revision, "
+    "key improvements made, and suggestions for further refinement without introducing outside facts."
+)
 
-You MUST respond strictly with valid JSON conforming to the following shape:
-{
+IMPROVER_INSTRUCTIONS = """1. CRITICAL RULE: DO NOT add facts, outside assertions, or new evidence not present in the student draft answer. Work strictly with the information, reasoning, and arguments the student provided.
+2. Elevate vocabulary, academic tone, sentence structure, flow, and conciseness while preserving all original facts and points.
+3. Do not evaluate factual completeness or grade missing outside knowledge.
+4. Do not use em dashes anywhere in your text. Use commas, colons, or periods.
+5. Output strictly raw JSON conforming exactly to the Output Format schema below. Do not wrap in markdown code fences or backticks."""
+
+IMPROVER_OUTPUT_FORMAT = """{
   "original_answer_feedback": "A constructive, supportive paragraph highlighting what the student expressed well and identifying where phrasing, structure, or tone can be sharpened.",
-  "improved_answer": "The revised version of the student answer. It preserves the student exact points and arguments while elevating grammar, academic tone, sentence flow, and clarity.",
+  "improved_answer": "The revised version of the student answer. It preserves the student exact points while elevating grammar, academic tone, sentence flow, and clarity.",
   "key_improvements_made": [
     "Specific structural or tonal improvement 1",
     "Specific structural or tonal improvement 2"
@@ -140,32 +164,44 @@ You MUST respond strictly with valid JSON conforming to the following shape:
       "reason": "Why this edit improves clarity or tone."
     }
   ]
-}
+}"""
 
-Output strictly raw JSON, with no markdown code fences or backticks.
-"""
+def build_improver_prompt(answer: str, subject_or_topic: Optional[str] = None) -> str:
+    """Build complete 5-part prompt for the Answer Improver."""
+    topic_clause = f"Academic topic context: {subject_or_topic.strip()}\n" if subject_or_topic and subject_or_topic.strip() else ""
+    return f"""Role: {IMPROVER_ROLE}
 
-def build_improver_user_prompt(answer: str, subject_or_topic: str = None) -> str:
-    prompt = "Please improve the following student draft answer.\n"
-    if subject_or_topic:
-        prompt += f"Subject or topic context: {subject_or_topic}\n"
-    prompt += f"\n=== STUDENT DRAFT ANSWER START ===\n{answer}\n=== STUDENT DRAFT ANSWER END ===\n\nReturn raw JSON only."
-    return prompt
+Task: {IMPROVER_TASK}
+
+Context:
+=== STUDENT INPUT START ===
+{topic_clause}{answer}
+=== STUDENT INPUT END ===
+
+Instructions:
+{IMPROVER_INSTRUCTIONS}
+
+Output Format:
+{IMPROVER_OUTPUT_FORMAT}
+
+Return raw JSON only."""
 
 
 # ---------------------------------------------------------
-# 4. Concept Explainer Prompts
+# 4. Concept Explainer Prompt Template
 # ---------------------------------------------------------
 
-EXPLAINER_SYSTEM_PROMPT = """You are a gifted educator who explains academic concepts with remarkable clarity across different learning depths.
+EXPLAINER_ROLE = "You are a gifted educator who explains academic concepts with exceptional clarity across different learning depths."
 
-Level adjustment:
-- Beginner: Relatable everyday analogies, simple language, straightforward steps, accessible practical example.
-- Intermediate: Standard college-level explanation, formal definitions, mechanism breakdown, balanced technical depth.
-- Advanced: Rigorous theoretical framework, formal mechanisms, boundary conditions, edge cases, and research context.
+EXPLAINER_INSTRUCTIONS = """1. Work strictly with the concept and subject specified in Context. Do not introduce fictional facts or pseudo-scientific claims.
+2. Tailor explanation depth strictly to the requested level:
+   - Beginner: Relatable everyday analogies, simple language, straightforward steps, accessible practical example.
+   - Intermediate: Standard college-level explanation, formal definitions, mechanism breakdown, balanced technical depth.
+   - Advanced: Rigorous theoretical framework, formal mechanisms, boundary conditions, edge cases, and research context.
+3. Do not use em dashes anywhere in your output. Use commas, colons, or parentheses.
+4. Output strictly raw JSON conforming exactly to the Output Format schema below. Do not wrap in markdown code fences or backticks."""
 
-You MUST respond strictly with valid JSON conforming to the following shape:
-{
+EXPLAINER_OUTPUT_FORMAT = """{
   "concept": "Concept Name",
   "subject": "Subject Name",
   "level": "beginner | intermediate | advanced",
@@ -187,18 +223,26 @@ You MUST respond strictly with valid JSON conforming to the following shape:
     "High-yield takeaway 1 for fast review",
     "High-yield takeaway 2"
   ]
-}
+}"""
 
-Guidelines:
-1. Tailor depth strictly to the requested level:
-   - Beginner: 3 to 4 steps, simple language.
-   - Intermediate: 4 to 5 steps, standard academic terminology.
-   - Advanced: 5 to 6 steps, advanced formal terminology and edge cases.
-2. Do not use em dashes in any section. Use commas, colons, or parentheses.
-3. Output strictly raw JSON, with no markdown code fences or backticks.
-"""
+def build_explainer_prompt(concept: str, level: str, subject: str = "Other") -> str:
+    """Build complete 5-part prompt for the Concept Explainer."""
+    task = f"Explain the concept '{concept}' at the '{level}' level in the subject domain '{subject}'."
+    return f"""Role: {EXPLAINER_ROLE}
 
-def build_explainer_user_prompt(concept: str, level: str, subject: str = "Other") -> str:
-    return f"""Please explain the concept '{concept}' at the '{level}' level in the subject domain '{subject}'.
+Task: {task}
+
+Context:
+=== STUDENT INPUT START ===
+Concept: {concept}
+Subject: {subject}
+Target Level: {level}
+=== STUDENT INPUT END ===
+
+Instructions:
+{EXPLAINER_INSTRUCTIONS}
+
+Output Format:
+{EXPLAINER_OUTPUT_FORMAT}
 
 Return raw JSON only."""
