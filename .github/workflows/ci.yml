@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "pip"
 
       - name: Install backend dependencies
@@ -38,8 +38,10 @@ jobs:
           chmod +x scripts/smoke.sh
           # Start backend in background
           python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          UVICORN_PID=$!
           sleep 3
           bash scripts/smoke.sh
+          kill $UVICORN_PID || true
 
   frontend-build:
     name: Frontend Build & Audit
