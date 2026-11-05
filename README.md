@@ -235,8 +235,7 @@ StudyMate-AI/
 │   ├── src/
 │   │   ├── components/          # Reusable UI components (ResultPanel, Sidebar, etc.)
 │   │   ├── data/                # Presets, FAQs, and stored real sample responses
-│   │   ├── hooks/               # Custom hooks (usePageMeta, useCountUp, etc.)
-│   │   ├── lib/                 # Client API layer, storage utilities
+│   │   ├── lib/                 # Client API layer, storage utilities, and hooks
 │   │   ├── pages/               # Route views (Home, Summarizer, Quiz, Improver, etc.)
 │   │   ├── App.jsx              # Main routing and command palette setup
 │   │   ├── index.css            # CSS variable tokens and base typography
